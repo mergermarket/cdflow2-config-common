@@ -32,24 +32,24 @@ import (
 type handler struct{}
 
 // New returns a new handler.
-func New() command.Handler {
+func New() common.Handler {
 	return &handler{}
 }
 
 // ConfigureRelease handles a configure release request in order to prepare for the release container to be ran.
-func (*handler) ConfigureRelease(request *command.ConfigureReleaseRequest, response *command.ConfigureReleaseResponse, errorStream io.Writer) error {
+func (*handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse, errorStream io.Writer) error {
 
 	return nil
 }
 
 // UploadRelease handles an upload release request in order to upload the release after the release container is run.
-func (*handler) UploadRelease(request *command.UploadReleaseRequest, response *command.UploadReleaseResponse, errorStream io.Writer, version string) error {
+func (*handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, errorStream io.Writer, version string) error {
 
 	return nil
 }
 
 // PrepareTerraform handles a prepare terraform request in order to provide configuration for terraform during a deploy, destroy, etc.
-func (*handler) PrepareTerraform(request *command.PrepareTerraformRequest, response *command.PrepareTerraformResponse, errorStream io.Writer) error {
+func (*handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse, errorStream io.Writer) error {
 
 	return nil
 }
