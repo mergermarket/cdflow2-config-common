@@ -48,9 +48,8 @@ func configureRelease(handler Handler, line []byte, encoder *json.Encoder, error
 	if err := json.Unmarshal(line, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
 	}
-	var response ConfigureReleaseResponse
-	response.Env = make(map[string]string)
-	if err := handler.ConfigureRelease(&request, &response, errorStream); err != nil {
+	response := CreateConfigureReleaseRespond()
+	if err := handler.ConfigureRelease(&request, response, errorStream); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)
 	}
 	if err := encoder.Encode(response); err != nil {
@@ -64,8 +63,8 @@ func uploadRelease(handler Handler, line []byte, encoder *json.Encoder, errorStr
 	if err := json.Unmarshal(line, &request); err != nil {
 		log.Fatalln("error parsing upload release request:", err)
 	}
-	var response UploadReleaseResponse
-	if err := handler.UploadRelease(&request, &response, errorStream, version); err != nil {
+	response := CreateUploadReleaseResponse()
+	if err := handler.UploadRelease(&request, response, errorStream, version); err != nil {
 		log.Fatalln("error in UploadRelease:", err)
 	}
 	if err := encoder.Encode(response); err != nil {
@@ -78,11 +77,32 @@ func prepareTerraform(handler Handler, line []byte, encoder *json.Encoder, error
 	if err := json.Unmarshal(line, &request); err != nil {
 		log.Fatalln("error parsing prepare terraform request:", err)
 	}
-	var response PrepareTerraformResponse
-	if err := handler.PrepareTerraform(&request, &response, errorStream); err != nil {
+	response := CreatePrepareTerraformResponse()
+	if err := handler.PrepareTerraform(&request, response, errorStream); err != nil {
 		log.Fatalln("error in PrepareTerraform:", err)
 	}
 	if err := encoder.Encode(response); err != nil {
 		log.Fatalln("error encoding prepare terraform response:", err)
 	}
+}
+
+// CreateConfigureReleaseRespond creates and returns an initialised ConfigureReleaseResponse.
+func CreateConfigureReleaseRespond() *ConfigureReleaseResponse {
+	var response ConfigureReleaseResponse
+	response.Env = make(map[string]string)
+	return &response
+}
+
+// CreateUploadReleaseResponse creates and returns an initialised UploadReleaseResponse.
+func CreateUploadReleaseResponse() *UploadReleaseResponse {
+	var response UploadReleaseResponse
+	return &response
+}
+
+// CreatePrepareTerraformResponse creates and returns an initialised PrepareTerraformResponse.
+func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
+	var response PrepareTerraformResponse
+	response.Env = make(map[string]string)
+	response.TerraformBackendConfig = make(map[string]string)
+	return &response
 }
