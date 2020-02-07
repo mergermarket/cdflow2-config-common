@@ -16,7 +16,7 @@ type handler struct{}
 
 func (*handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse, errorStream io.Writer) error {
 	fmt.Fprintf(errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
-	response.Env = map[string]string{"response-env-key": "response-env-value"}
+	response.Env["response-env-key"] = "response-env-value"
 	return nil
 }
 

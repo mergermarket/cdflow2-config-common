@@ -49,6 +49,7 @@ func configureRelease(handler Handler, line []byte, encoder *json.Encoder, error
 		log.Fatalln("error parsing configure release request:", err)
 	}
 	var response ConfigureReleaseResponse
+	response.Env = make(map[string]string)
 	if err := handler.ConfigureRelease(&request, &response, errorStream); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)
 	}
