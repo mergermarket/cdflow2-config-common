@@ -48,7 +48,7 @@ func configureRelease(handler Handler, line []byte, encoder *json.Encoder, error
 	if err := json.Unmarshal(line, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
 	}
-	response := CreateConfigureReleaseRespond()
+	response := CreateConfigureReleaseResponse()
 	if err := handler.ConfigureRelease(&request, response, errorStream); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)
 	}
@@ -86,17 +86,40 @@ func prepareTerraform(handler Handler, line []byte, encoder *json.Encoder, error
 	}
 }
 
-// CreateConfigureReleaseRespond creates and returns an initialised ConfigureReleaseResponse.
-func CreateConfigureReleaseRespond() *ConfigureReleaseResponse {
+// CreateConfigureReleaseRequest creates and returns an initialised ConfigureReleaseRequest - useful for testing config containers.
+func CreateConfigureReleaseRequest() *ConfigureReleaseRequest {
+	var request ConfigureReleaseRequest
+	request.Env = make(map[string]string)
+	request.Config = make(map[string]interface{})
+	return &request
+}
+
+// CreateConfigureReleaseResponse creates and returns an initialised ConfigureReleaseResponse.
+func CreateConfigureReleaseResponse() *ConfigureReleaseResponse {
 	var response ConfigureReleaseResponse
 	response.Env = make(map[string]string)
 	return &response
+}
+
+// CreateUploadReleaseRequest creates and returns an initialised UploadReleaseRequest - useful for testing config containers.
+func CreateUploadReleaseRequest() *UploadReleaseRequest {
+	var request UploadReleaseRequest
+	request.ReleaseMetadata = make(map[string]map[string]string)
+	return &request
 }
 
 // CreateUploadReleaseResponse creates and returns an initialised UploadReleaseResponse.
 func CreateUploadReleaseResponse() *UploadReleaseResponse {
 	var response UploadReleaseResponse
 	return &response
+}
+
+// CreatePrepareTerraformRequest creates and returns an initialised PrepareTerraformRequest - useful for testing config containers.
+func CreatePrepareTerraformRequest() *PrepareTerraformRequest {
+	var request PrepareTerraformRequest
+	request.Config = make(map[string]interface{})
+	request.Env = make(map[string]string)
+	return &request
 }
 
 // CreatePrepareTerraformResponse creates and returns an initialised PrepareTerraformResponse.

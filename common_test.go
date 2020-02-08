@@ -143,3 +143,40 @@ func readAndCheckOutputLine(scanner *bufio.Scanner, expected map[string]interfac
 		log.Fatalln("unexpected message:", message)
 	}
 }
+
+func TestCreateConfigureReleaseRequest(t *testing.T) {
+	request := common.CreateConfigureReleaseRequest()
+	// tests that the maps are initialised, otherwise these cause a panic
+	request.Config["key"] = "value"
+	request.Env["key"] = "value"
+}
+
+func TestCreateConfigureReleaseResponse(t *testing.T) {
+	response := common.CreateConfigureReleaseResponse()
+	response.Env["key"] = "value"
+}
+
+func TestCreateUploadReleaseRequest(t *testing.T) {
+	request := common.CreateUploadReleaseRequest()
+	request.ReleaseMetadata["key"] = map[string]string{}
+}
+
+func TestCreateUploadReleaseResponse(t *testing.T) {
+	response := common.CreateUploadReleaseResponse()
+	// not much to test for this
+	if response.Message != "" {
+		log.Fatalln("unexpected zero value")
+	}
+}
+
+func TestCreatePrepareTerraformRequest(t *testing.T) {
+	request := common.CreatePrepareTerraformRequest()
+	request.Config["key"] = "value"
+	request.Env["key"] = "value"
+}
+
+func TestCreatePrepareTerraformResponse(t *testing.T) {
+	response := common.CreatePrepareTerraformResponse()
+	response.Env["key"] = "value"
+	response.TerraformBackendConfig["key"] = "value"
+}
