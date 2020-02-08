@@ -17,12 +17,18 @@ type handler struct{}
 func (*handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse, errorStream io.Writer) error {
 	fmt.Fprintf(errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
 	response.Env["response-env-key"] = "response-env-value"
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
 	return nil
 }
 
 func (*handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, errorStream io.Writer, version string) error {
 	fmt.Fprintf(errorStream, "terraform image: %v, release metadata value: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"])
 	response.Message = "test-uploaded-message"
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
 	return nil
 }
 
@@ -35,6 +41,9 @@ func (*handler) PrepareTerraform(request *common.PrepareTerraformRequest, respon
 	response.TerraformBackendType = "test-backend-type"
 	response.TerraformBackendConfig = map[string]string{
 		"backend-key": "backend-value",
+	}
+	if !response.Success {
+		log.Fatal("success didn't default to true")
 	}
 	return nil
 }
@@ -70,6 +79,7 @@ func checkConfigureRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorB
 		"Env": map[string]string{
 			"response-env-key": "response-env-value",
 		},
+		"Success": true,
 	})
 	if errorBuffer.String() != "version: test-version, env key: env-value, config key: config-value\n" {
 		log.Fatalln("unexpected configure release debug output:", errorBuffer.String())
@@ -92,6 +102,7 @@ func checkUploadRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorBuff
 
 	readAndCheckOutputLine(scanner, map[string]interface{}{
 		"Message": "test-uploaded-message",
+		"Success": true,
 	})
 	if errorBuffer.String() != "terraform image: test-terraform-image, release metadata value: release-value\n" {
 		log.Fatalln("unexpected upload release debug output:", errorBuffer.String())
@@ -123,6 +134,7 @@ func checkPrepareTerraform(encoder *json.Encoder, scanner *bufio.Scanner, errorB
 		},
 		"TerraformBackendType": "test-backend-type",
 		"TerraformImage":       "test-terraform-image",
+		"Success":              true,
 	})
 	if errorBuffer.String() != "version: test-version, env name: test-env, config value: config-value, env value: env-value\n" {
 		log.Fatalln("unexpected prepare terraform debug output:", errorBuffer.String())
@@ -154,6 +166,9 @@ func TestCreateConfigureReleaseRequest(t *testing.T) {
 func TestCreateConfigureReleaseResponse(t *testing.T) {
 	response := common.CreateConfigureReleaseResponse()
 	response.Env["key"] = "value"
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
 }
 
 func TestCreateUploadReleaseRequest(t *testing.T) {
@@ -163,9 +178,8 @@ func TestCreateUploadReleaseRequest(t *testing.T) {
 
 func TestCreateUploadReleaseResponse(t *testing.T) {
 	response := common.CreateUploadReleaseResponse()
-	// not much to test for this
-	if response.Message != "" {
-		log.Fatalln("unexpected zero value")
+	if !response.Success {
+		log.Fatal("success didn't default to true")
 	}
 }
 
@@ -179,4 +193,7 @@ func TestCreatePrepareTerraformResponse(t *testing.T) {
 	response := common.CreatePrepareTerraformResponse()
 	response.Env["key"] = "value"
 	response.TerraformBackendConfig["key"] = "value"
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
 }

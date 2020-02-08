@@ -11,7 +11,8 @@ type ConfigureReleaseRequest struct {
 
 // ConfigureReleaseResponse is the outgoing configure release response format.
 type ConfigureReleaseResponse struct {
-	Env map[string]string
+	Env     map[string]string
+	Success bool
 }
 
 // UploadReleaseRequest is the incoming upload release request format.
@@ -23,6 +24,7 @@ type UploadReleaseRequest struct {
 // UploadReleaseResponse is the outgoing upload release response format.
 type UploadReleaseResponse struct {
 	Message string
+	Success bool
 }
 
 // PrepareTerraformRequest is the incoming prepare terraform request format.
@@ -39,6 +41,7 @@ type PrepareTerraformResponse struct {
 	Env                    map[string]string
 	TerraformBackendType   string
 	TerraformBackendConfig map[string]string
+	Success                bool
 }
 
 // Handler has methods to handle each bit of config.
