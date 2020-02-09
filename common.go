@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+
+	"github.com/pierrre/archivefile/zip"
 )
 
 // This boilerplate is intended to be generic, copyed to any config container - put any specific logic in handler/handler.go
@@ -63,6 +65,7 @@ func uploadRelease(handler Handler, line []byte, encoder *json.Encoder, errorStr
 	if err := json.Unmarshal(line, &request); err != nil {
 		log.Fatalln("error parsing upload release request:", err)
 	}
+	// zip up /release folder here
 	response := CreateUploadReleaseResponse()
 	if err := handler.UploadRelease(&request, response, errorStream, version); err != nil {
 		log.Fatalln("error in UploadRelease:", err)
@@ -131,4 +134,14 @@ func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
 	response.TerraformBackendConfig = make(map[string]string)
 	response.Success = true
 	return &response
+}
+
+// PackRelease streams a zip archive of the /release folder to the provided io.Writer.
+func PackRelease(stream io.Writer) error {
+	return zip.Archive("/release", stream, nil)
+}
+
+// UnpackRelease takes a stream of a zip archive and unpacks it to the /release folder.
+func UnpackRelease(stream io.ReaderAt, size int64) error {
+	return zip.Unarchive(stream, size, "/release", nil)
 }
