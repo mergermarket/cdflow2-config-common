@@ -136,9 +136,13 @@ func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
 	return &response
 }
 
-// PackRelease streams a zip archive of the /release folder to the provided io.Writer.
-func PackRelease(stream io.Writer) error {
-	return zip.Archive("/release", stream, nil)
+// PackRelease returns a read stream of the /release folder as a zip.
+func PackRelease() (io.Reader, error) {
+	reader, writer := io.Pipe()
+	if err := zip.Archive("/release", writer, nil); err != nil {
+		return nil, err
+	}
+	return reader, nil
 }
 
 // UnpackRelease takes a stream of a zip archive and unpacks it to the /release folder.
