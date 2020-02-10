@@ -18,6 +18,7 @@ type message struct {
 // Run handles all the IO, calling into the passed in Handler to do the actual work.
 func Run(handler Handler, readStream io.Reader, writeStream, errorStream io.Writer) {
 	var version string
+	var config map[string]interface{}
 	scanner := bufio.NewScanner(readStream)
 	encoder := json.NewEncoder(writeStream)
 	// for sending diagnostic info for the tests
@@ -29,9 +30,9 @@ func Run(handler Handler, readStream io.Reader, writeStream, errorStream io.Writ
 		}
 		switch msg.Action {
 		case "configure_release":
-			version = configureRelease(handler, line, encoder, errorStream)
+			version, config = configureRelease(handler, line, encoder, errorStream)
 		case "upload_release":
-			uploadRelease(handler, line, encoder, errorStream, version)
+			uploadRelease(handler, line, encoder, errorStream, version, config)
 		case "prepare_terraform":
 			prepareTerraform(handler, line, encoder, errorStream)
 		case "stop":
@@ -45,7 +46,7 @@ func Run(handler Handler, readStream io.Reader, writeStream, errorStream io.Writ
 	}
 }
 
-func configureRelease(handler Handler, line []byte, encoder *json.Encoder, errorStream io.Writer) string {
+func configureRelease(handler Handler, line []byte, encoder *json.Encoder, errorStream io.Writer) (string, map[string]interface{}) {
 	var request ConfigureReleaseRequest
 	if err := json.Unmarshal(line, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
@@ -57,17 +58,17 @@ func configureRelease(handler Handler, line []byte, encoder *json.Encoder, error
 	if err := encoder.Encode(response); err != nil {
 		log.Fatalln("error encoding configure release response:", err)
 	}
-	return request.Version
+	return request.Version, request.Config
 }
 
-func uploadRelease(handler Handler, line []byte, encoder *json.Encoder, errorStream io.Writer, version string) {
+func uploadRelease(handler Handler, line []byte, encoder *json.Encoder, errorStream io.Writer, version string, config map[string]interface{}) {
 	var request UploadReleaseRequest
 	if err := json.Unmarshal(line, &request); err != nil {
 		log.Fatalln("error parsing upload release request:", err)
 	}
 	// zip up /release folder here
 	response := CreateUploadReleaseResponse()
-	if err := handler.UploadRelease(&request, response, errorStream, version); err != nil {
+	if err := handler.UploadRelease(&request, response, errorStream, version, config); err != nil {
 		log.Fatalln("error in UploadRelease:", err)
 	}
 	if err := encoder.Encode(response); err != nil {

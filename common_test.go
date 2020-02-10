@@ -23,8 +23,8 @@ func (*handler) ConfigureRelease(request *common.ConfigureReleaseRequest, respon
 	return nil
 }
 
-func (*handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, errorStream io.Writer, version string) error {
-	fmt.Fprintf(errorStream, "terraform image: %v, release metadata value: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"])
+func (*handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, errorStream io.Writer, version string, config map[string]interface{}) error {
+	fmt.Fprintf(errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"], config["config-key"])
 	response.Message = "test-uploaded-message"
 	if !response.Success {
 		log.Fatal("success didn't default to true")
@@ -58,14 +58,13 @@ func TestRun(t *testing.T) {
 
 	go common.Run(&handler{}, inputReader, outputWriter, &errorBuffer)
 
-	checkConfigureRelease(encoder, scanner, &errorBuffer)
-	checkUploadRelease(encoder, scanner, &errorBuffer)
+	checkRelease(encoder, scanner, &errorBuffer)
 	checkPrepareTerraform(encoder, scanner, &errorBuffer)
 
 	encoder.Encode(map[string]string{"Action": "stop"})
 }
 
-func checkConfigureRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorBuffer *bytes.Buffer) {
+func checkRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorBuffer *bytes.Buffer) {
 	if err := encoder.Encode(map[string]interface{}{
 		"Action":  "configure_release",
 		"Version": "test-version",
@@ -85,9 +84,7 @@ func checkConfigureRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorB
 		log.Fatalln("unexpected configure release debug output:", errorBuffer.String())
 	}
 	errorBuffer.Truncate(0)
-}
 
-func checkUploadRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorBuffer *bytes.Buffer) {
 	if err := encoder.Encode(map[string]interface{}{
 		"Action":         "upload_release",
 		"TerraformImage": "test-terraform-image",
@@ -104,7 +101,7 @@ func checkUploadRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorBuff
 		"Message": "test-uploaded-message",
 		"Success": true,
 	})
-	if errorBuffer.String() != "terraform image: test-terraform-image, release metadata value: release-value\n" {
+	if errorBuffer.String() != "terraform image: test-terraform-image, release metadata value: release-value, config key: config-value\n" {
 		log.Fatalln("unexpected upload release debug output:", errorBuffer.String())
 	}
 	errorBuffer.Truncate(0)

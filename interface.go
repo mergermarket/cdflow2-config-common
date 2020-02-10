@@ -47,6 +47,6 @@ type PrepareTerraformResponse struct {
 // Handler has methods to handle each bit of config.
 type Handler interface {
 	ConfigureRelease(request *ConfigureReleaseRequest, response *ConfigureReleaseResponse, errorStream io.Writer) error
-	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, errorStream io.Writer, version string) error
+	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, errorStream io.Writer, version string, config map[string]interface{}) error
 	PrepareTerraform(request *PrepareTerraformRequest, response *PrepareTerraformResponse, errorStream io.Writer) error
 }
