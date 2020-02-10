@@ -1,12 +1,15 @@
 package common
 
 import (
+	"archive/zip"
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
-
-	"github.com/pierrre/archivefile/zip"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 // This boilerplate is intended to be generic, copyed to any config container - put any specific logic in handler/handler.go
@@ -137,16 +140,77 @@ func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
 	return &response
 }
 
-// PackRelease returns a read stream of the /release folder as a zip.
-func PackRelease() (io.Reader, error) {
-	reader, writer := io.Pipe()
-	if err := zip.Archive("/release", writer, nil); err != nil {
-		return nil, err
+// ZipRelease zips the release folder to a stream.
+func ZipRelease(writer io.Writer, dir, component, version string) error {
+	zipWriter := zip.NewWriter(writer)
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		relativePath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+
+		writer, err := zipWriter.Create(filepath.Join(component+"-"+version, relativePath))
+		if err != nil {
+			return err
+		}
+
+		reader, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer reader.Close()
+
+		_, err = io.Copy(writer, reader)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-	return reader, nil
+	return zipWriter.Close()
 }
 
-// UnpackRelease takes a stream of a zip archive and unpacks it to the /release folder.
-func UnpackRelease(stream io.ReaderAt, size int64) error {
-	return zip.Unarchive(stream, size, "/release", nil)
+// UnzipRelease unzips the release.
+func UnzipRelease(reader io.ReaderAt, size int64, dir, component, version string) error {
+	zipReader, err := zip.NewReader(reader, size)
+	if err != nil {
+		return nil
+	}
+	for _, file := range zipReader.File {
+		if file.FileInfo().IsDir() {
+			continue
+		}
+		if file.Name[0] == '/' {
+			return fmt.Errorf("error in release zip, unexpected absolute path \"%v\"", file.Name[0])
+		}
+		prefix := component + "-" + version
+		parts := strings.Split(file.Name, "/")
+		if parts[0] != prefix {
+			return fmt.Errorf("error in release zip, expected prefix \"%v\", got \"%v\"", prefix, parts[0])
+		}
+		destFilename := filepath.Join(dir, filepath.Join(parts[1:]...))
+		reader, err := file.Open()
+		if err != nil {
+			return err
+		}
+		defer reader.Close()
+
+		if err = os.MkdirAll(filepath.Dir(destFilename), os.FileMode(0755)); err != nil {
+			return err
+		}
+		writer, err := os.Create(destFilename)
+		if err != nil {
+			return err
+		}
+		defer writer.Close()
+		if _, err := io.Copy(writer, reader); err != nil {
+			return err
+		}
+	}
+	return nil
 }
