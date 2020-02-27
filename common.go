@@ -2,95 +2,152 @@ package common
 
 import (
 	"archive/zip"
-	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
-
-// This boilerplate is intended to be generic, copyed to any config container - put any specific logic in handler/handler.go
 
 type message struct {
 	Action string
 }
 
+const defaultSocketPath = "/var/run/cdflow2-config-sock"
+
 // Run handles all the IO, calling into the passed in Handler to do the actual work.
-func Run(handler Handler, readStream io.Reader, writeStream, errorStream io.Writer) {
-	var version string
-	var config map[string]interface{}
-	scanner := bufio.NewScanner(readStream)
-	encoder := json.NewEncoder(writeStream)
-	// for sending diagnostic info for the tests
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		var msg message
-		if err := json.Unmarshal(line, &msg); err != nil {
-			log.Fatalln("error reading message:", err)
-		}
-		switch msg.Action {
-		case "configure_release":
-			version, config = configureRelease(handler, line, encoder, errorStream)
-		case "upload_release":
-			uploadRelease(handler, line, encoder, errorStream, version, config)
-		case "prepare_terraform":
-			prepareTerraform(handler, line, encoder, errorStream)
-		case "stop":
-			return
-		default:
-			log.Fatalln("unknown message type:", msg.Action)
-		}
+func Run(handler Handler, args []string, readStream io.Reader, writeStream, errorStream io.Writer, overrideSocketPath string) {
+	socketPath := overrideSocketPath
+	if socketPath == "" {
+		socketPath = defaultSocketPath
 	}
-	if err := scanner.Err(); err != nil {
-		log.Fatalln("error reading from stdin:", err)
+	if len(args) == 1 && args[0] == "forward" {
+		forward(readStream, writeStream, socketPath)
+	} else {
+		listen(handler, errorStream, socketPath)
 	}
 }
 
-func configureRelease(handler Handler, line []byte, encoder *json.Encoder, errorStream io.Writer) (string, map[string]interface{}) {
+func connect(socketPath string) *net.UnixConn {
+	var err error
+	for i := 0; i < 20; i++ {
+		var connection net.Conn
+		connection, err = net.Dial("unix", socketPath)
+		if err == nil {
+			if connection, ok := connection.(*net.UnixConn); ok {
+				return connection
+			} else {
+				log.Panicf("unexpected type for connection: %T", connection)
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	log.Panicf("could not connect to unix domain socket %v after four seconds: %v\n", socketPath, err)
+	return nil
+}
+
+func forward(readStream io.Reader, writeStream io.Writer, socketPath string) {
+	connection := connect(socketPath)
+	defer connection.Close()
+	go func() {
+		_, err := io.Copy(connection, readStream)
+		if err != nil {
+			log.Panicf("error copying to %v: %v", socketPath, err)
+		}
+		if err := connection.CloseWrite(); err != nil {
+			log.Panicln("error closing socket:", err)
+		}
+	}()
+	if _, err := io.Copy(writeStream, connection); err != nil {
+		log.Panicf("error copying from %v: %v", socketPath, err)
+	}
+}
+
+func listen(handler Handler, errorStream io.Writer, socketPath string) {
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		log.Panicf("could not listen on unix domain socket %v: %v", socketPath, err)
+	}
+	defer listener.Close()
+	var version string
+	var config map[string]interface{}
+	stopping := false
+	for !stopping {
+		connection, err := listener.Accept()
+		if err != nil {
+			log.Panicf("error accepting connection on unix domain socket %v: %v", socketPath, err)
+		}
+		var buffer bytes.Buffer
+		_, err = io.Copy(&buffer, connection)
+		if err != nil {
+			log.Panicf("error reading request from unix domain socket %v: %v", socketPath, err)
+		}
+		rawRequest := buffer.Bytes()
+		var request message
+		if err := json.Unmarshal(rawRequest, &request); err != nil {
+			log.Panicln("error reading request:", err)
+		}
+		var response interface{}
+		switch request.Action {
+		case "configure_release":
+			response, version, config = configureRelease(handler, rawRequest, errorStream)
+		case "upload_release":
+			response = uploadRelease(handler, rawRequest, errorStream, version, config)
+		case "prepare_terraform":
+			response = prepareTerraform(handler, rawRequest, errorStream)
+		case "stop":
+			stopping = true
+			response = map[string]interface{}{"message": "bye!"}
+		default:
+			log.Panicln("unknown message type:", request.Action)
+		}
+		if err := json.NewEncoder(connection).Encode(response); err != nil {
+			log.Panicln("error encoding response:", err)
+		}
+		connection.Close()
+	}
+}
+
+func configureRelease(handler Handler, rawRequest []byte, errorStream io.Writer) (*ConfigureReleaseResponse, string, map[string]interface{}) {
 	var request ConfigureReleaseRequest
-	if err := json.Unmarshal(line, &request); err != nil {
+	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
 	}
 	response := CreateConfigureReleaseResponse()
 	if err := handler.ConfigureRelease(&request, response, errorStream); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)
 	}
-	if err := encoder.Encode(response); err != nil {
-		log.Fatalln("error encoding configure release response:", err)
-	}
-	return request.Version, request.Config
+	return response, request.Version, request.Config
 }
 
-func uploadRelease(handler Handler, line []byte, encoder *json.Encoder, errorStream io.Writer, version string, config map[string]interface{}) {
+func uploadRelease(handler Handler, rawRequest []byte, errorStream io.Writer, version string, config map[string]interface{}) *UploadReleaseResponse {
 	var request UploadReleaseRequest
-	if err := json.Unmarshal(line, &request); err != nil {
+	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing upload release request:", err)
 	}
-	// zip up /release folder here
+	// TODO zip up /release folder here
 	response := CreateUploadReleaseResponse()
 	if err := handler.UploadRelease(&request, response, errorStream, version, config); err != nil {
 		log.Fatalln("error in UploadRelease:", err)
 	}
-	if err := encoder.Encode(response); err != nil {
-		log.Fatalln("error encoding upload release response:", err)
-	}
+	return response
 }
 
-func prepareTerraform(handler Handler, line []byte, encoder *json.Encoder, errorStream io.Writer) {
+func prepareTerraform(handler Handler, rawRequest []byte, errorStream io.Writer) *PrepareTerraformResponse {
 	var request PrepareTerraformRequest
-	if err := json.Unmarshal(line, &request); err != nil {
+	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing prepare terraform request:", err)
 	}
 	response := CreatePrepareTerraformResponse()
 	if err := handler.PrepareTerraform(&request, response, errorStream); err != nil {
 		log.Fatalln("error in PrepareTerraform:", err)
 	}
-	if err := encoder.Encode(response); err != nil {
-		log.Fatalln("error encoding prepare terraform response:", err)
-	}
+	return response
 }
 
 // CreateConfigureReleaseRequest creates and returns an initialised ConfigureReleaseRequest - useful for testing config containers.

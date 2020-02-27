@@ -53,45 +53,72 @@ func (*handler) PrepareTerraform(request *common.PrepareTerraformRequest, respon
 	}
 	return nil
 }
-func TestRun(t *testing.T) {
-	inputReader, inputWriter := io.Pipe()
-	encoder := json.NewEncoder(inputWriter)
 
-	outputReader, outputWriter := io.Pipe()
-	scanner := bufio.NewScanner(outputReader)
+func tempSock() string {
+	f, err := ioutil.TempFile("", "cdflow2-config-common-test-sock-*")
+	if err != nil {
+		log.Panic("could not create temp file:", err)
+	}
+	f.Close()
+	os.Remove(f.Name())
+	return f.Name()
+}
+
+func TestRun(t *testing.T) {
 
 	var errorBuffer bytes.Buffer
 
-	go common.Run(&handler{}, inputReader, outputWriter, &errorBuffer)
+	socketPath := tempSock()
+	defer os.Remove(socketPath)
 
-	checkRelease(encoder, scanner, &errorBuffer)
-	checkPrepareTerraform(encoder, scanner, &errorBuffer)
+	go common.Run(&handler{}, []string{}, nil, nil, &errorBuffer, socketPath)
 
-	encoder.Encode(map[string]string{"Action": "stop"})
+	checkRelease(&errorBuffer, socketPath)
+	//checkPrepareTerraform(encoder, scanner, &errorBuffer)
+	forward(map[string]string{"Action": "stop"}, socketPath)
 }
 
-func checkRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorBuffer *bytes.Buffer) {
-	if err := encoder.Encode(map[string]interface{}{
+func forward(request interface{}, socketPath string) (interface{}, error) {
+	var requestBuffer bytes.Buffer
+	var responseBuffer bytes.Buffer
+	if err := json.NewEncoder(&requestBuffer).Encode(request); err != nil {
+		return nil, err
+	}
+	common.Run(&handler{}, []string{"forward"}, &requestBuffer, &responseBuffer, nil, socketPath)
+	var message map[string]interface{}
+	if err := json.NewDecoder(&responseBuffer).Decode(&message); err != nil {
+		return nil, err
+	}
+	return message, nil
+}
+
+func checkRelease(errorBuffer *bytes.Buffer, socketPath string) {
+
+	configureReleaseResponse, err := forward(map[string]interface{}{
 		"Action":  "configure_release",
 		"Version": "test-version",
 		"Config":  map[string]interface{}{"config-key": "config-value"},
 		"Env":     map[string]string{"env-key": "env-value"},
-	}); err != nil {
-		log.Fatalln("error encoding json:", err)
+	}, socketPath)
+	if err != nil {
+		log.Fatalln("error calling configure release:", err)
 	}
-
-	readAndCheckOutputLine(scanner, map[string]interface{}{
+	if fmt.Sprintf("%v", configureReleaseResponse) != fmt.Sprintf("%v", map[string]interface{}{
 		"Env": map[string]string{
 			"response-env-key": "response-env-value",
 		},
 		"Success": true,
-	})
+	}) {
+		log.Fatalln("unexpected configure release response:", configureReleaseResponse)
+	}
+
 	if errorBuffer.String() != "version: test-version, env key: env-value, config key: config-value\n" {
 		log.Fatalln("unexpected configure release debug output:", errorBuffer.String())
 	}
+
 	errorBuffer.Truncate(0)
 
-	if err := encoder.Encode(map[string]interface{}{
+	uploadReleaseResponse, err := forward(map[string]interface{}{
 		"Action":         "upload_release",
 		"TerraformImage": "test-terraform-image",
 		"ReleaseMetadata": map[string]map[string]string{
@@ -99,14 +126,17 @@ func checkRelease(encoder *json.Encoder, scanner *bufio.Scanner, errorBuffer *by
 				"release-key": "release-value",
 			},
 		},
-	}); err != nil {
-		log.Fatalln("error encoding json:", err)
+	}, socketPath)
+	if err != nil {
+		log.Fatalln("error calling upload release:", err)
 	}
-
-	readAndCheckOutputLine(scanner, map[string]interface{}{
+	if fmt.Sprintf("%v", uploadReleaseResponse) != fmt.Sprintf("%v", map[string]interface{}{
 		"Message": "test-uploaded-message",
 		"Success": true,
-	})
+	}) {
+		log.Fatalln("unexpected upload release response:", uploadReleaseResponse)
+	}
+
 	if errorBuffer.String() != "terraform image: test-terraform-image, release metadata value: release-value, config key: config-value\n" {
 		log.Fatalln("unexpected upload release debug output:", errorBuffer.String())
 	}
