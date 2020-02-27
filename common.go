@@ -18,7 +18,7 @@ type message struct {
 	Action string
 }
 
-const defaultSocketPath = "/var/run/cdflow2-config-sock"
+const defaultSocketPath = "/sock"
 
 // Run handles all the IO, calling into the passed in Handler to do the actual work.
 func Run(handler Handler, args []string, readStream io.Reader, writeStream, errorStream io.Writer, overrideSocketPath string) {
