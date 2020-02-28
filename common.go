@@ -95,11 +95,11 @@ func listen(handler Handler, errorStream io.Writer, socketPath string) {
 		var response interface{}
 		switch request.Action {
 		case "configure_release":
-			response, version, config = configureRelease(handler, rawRequest, errorStream)
+			response, version, config = configureRelease(handler, rawRequest)
 		case "upload_release":
-			response = uploadRelease(handler, rawRequest, errorStream, version, config)
+			response = uploadRelease(handler, rawRequest, version, config)
 		case "prepare_terraform":
-			response = prepareTerraform(handler, rawRequest, errorStream)
+			response = prepareTerraform(handler, rawRequest)
 		case "stop":
 			stopping = true
 			response = map[string]interface{}{"message": "bye!"}
@@ -113,38 +113,38 @@ func listen(handler Handler, errorStream io.Writer, socketPath string) {
 	}
 }
 
-func configureRelease(handler Handler, rawRequest []byte, errorStream io.Writer) (*ConfigureReleaseResponse, string, map[string]interface{}) {
+func configureRelease(handler Handler, rawRequest []byte) (*ConfigureReleaseResponse, string, map[string]interface{}) {
 	var request ConfigureReleaseRequest
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
 	}
 	response := CreateConfigureReleaseResponse()
-	if err := handler.ConfigureRelease(&request, response, errorStream); err != nil {
+	if err := handler.ConfigureRelease(&request, response); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)
 	}
 	return response, request.Version, request.Config
 }
 
-func uploadRelease(handler Handler, rawRequest []byte, errorStream io.Writer, version string, config map[string]interface{}) *UploadReleaseResponse {
+func uploadRelease(handler Handler, rawRequest []byte, version string, config map[string]interface{}) *UploadReleaseResponse {
 	var request UploadReleaseRequest
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing upload release request:", err)
 	}
 	// TODO zip up /release folder here
 	response := CreateUploadReleaseResponse()
-	if err := handler.UploadRelease(&request, response, errorStream, version, config); err != nil {
+	if err := handler.UploadRelease(&request, response, version, config); err != nil {
 		log.Fatalln("error in UploadRelease:", err)
 	}
 	return response
 }
 
-func prepareTerraform(handler Handler, rawRequest []byte, errorStream io.Writer) *PrepareTerraformResponse {
+func prepareTerraform(handler Handler, rawRequest []byte) *PrepareTerraformResponse {
 	var request PrepareTerraformRequest
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing prepare terraform request:", err)
 	}
 	response := CreatePrepareTerraformResponse()
-	if err := handler.PrepareTerraform(&request, response, errorStream); err != nil {
+	if err := handler.PrepareTerraform(&request, response); err != nil {
 		log.Fatalln("error in PrepareTerraform:", err)
 	}
 	return response

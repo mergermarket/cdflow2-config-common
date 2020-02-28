@@ -2,7 +2,6 @@ package common_test
 
 import (
 	"archive/zip"
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -18,10 +17,12 @@ import (
 	common "github.com/mergermarket/cdflow2-config-common"
 )
 
-type handler struct{}
+type handler struct {
+	errorStream io.Writer
+}
 
-func (*handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse, errorStream io.Writer) error {
-	fmt.Fprintf(errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
+func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse) error {
+	fmt.Fprintf(handler.errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
 	response.Env["response-env-key"] = "response-env-value"
 	if !response.Success {
 		log.Fatal("success didn't default to true")
@@ -29,8 +30,8 @@ func (*handler) ConfigureRelease(request *common.ConfigureReleaseRequest, respon
 	return nil
 }
 
-func (*handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, errorStream io.Writer, version string, config map[string]interface{}) error {
-	fmt.Fprintf(errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"], config["config-key"])
+func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, version string, config map[string]interface{}) error {
+	fmt.Fprintf(handler.errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"], config["config-key"])
 	response.Message = "test-uploaded-message"
 	if !response.Success {
 		log.Fatal("success didn't default to true")
@@ -38,8 +39,8 @@ func (*handler) UploadRelease(request *common.UploadReleaseRequest, response *co
 	return nil
 }
 
-func (*handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse, errorStream io.Writer) error {
-	fmt.Fprintf(errorStream, "version: %v, env name: %v, config value: %v, env value: %v\n", request.Version, request.EnvName, request.Config["config-key"], request.Env["env-key"])
+func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse) error {
+	fmt.Fprintf(handler.errorStream, "version: %v, env name: %v, config value: %v, env value: %v\n", request.Version, request.EnvName, request.Config["config-key"], request.Env["env-key"])
 	response.Env = map[string]string{
 		"response-env-key": "response-env-value",
 	}
@@ -71,10 +72,12 @@ func TestRun(t *testing.T) {
 	socketPath := tempSock()
 	defer os.Remove(socketPath)
 
-	go common.Run(&handler{}, []string{}, nil, nil, &errorBuffer, socketPath)
+	go common.Run(&handler{
+		errorStream: &errorBuffer,
+	}, []string{}, nil, nil, &errorBuffer, socketPath)
 
 	checkRelease(&errorBuffer, socketPath)
-	//checkPrepareTerraform(encoder, scanner, &errorBuffer)
+	checkPrepareTerraform(&errorBuffer, socketPath)
 	forward(map[string]string{"Action": "stop"}, socketPath)
 }
 
@@ -93,7 +96,6 @@ func forward(request interface{}, socketPath string) (interface{}, error) {
 }
 
 func checkRelease(errorBuffer *bytes.Buffer, socketPath string) {
-
 	configureReleaseResponse, err := forward(map[string]interface{}{
 		"Action":  "configure_release",
 		"Version": "test-version",
@@ -143,8 +145,8 @@ func checkRelease(errorBuffer *bytes.Buffer, socketPath string) {
 	errorBuffer.Truncate(0)
 }
 
-func checkPrepareTerraform(encoder *json.Encoder, scanner *bufio.Scanner, errorBuffer *bytes.Buffer) {
-	if err := encoder.Encode(map[string]interface{}{
+func checkPrepareTerraform(errorBuffer *bytes.Buffer, socketPath string) {
+	prepareTerraformResponse, err := forward(map[string]interface{}{
 		"Action":  "prepare_terraform",
 		"Version": "test-version",
 		"EnvName": "test-env",
@@ -154,11 +156,12 @@ func checkPrepareTerraform(encoder *json.Encoder, scanner *bufio.Scanner, errorB
 		"Env": map[string]string{
 			"env-key": "env-value",
 		},
-	}); err != nil {
-		log.Fatalln("error encoding json:", err)
+	}, socketPath)
+	if err != nil {
+		log.Fatalln("error calling prepare terraform:", err)
 	}
 
-	readAndCheckOutputLine(scanner, map[string]interface{}{
+	if fmt.Sprintf("%v", prepareTerraformResponse) != fmt.Sprintf("%v", map[string]interface{}{
 		"Env": map[string]string{
 			"response-env-key": "response-env-value",
 		},
@@ -168,25 +171,14 @@ func checkPrepareTerraform(encoder *json.Encoder, scanner *bufio.Scanner, errorB
 		"TerraformBackendType": "test-backend-type",
 		"TerraformImage":       "test-terraform-image",
 		"Success":              true,
-	})
+	}) {
+		log.Fatalln("unexpected prepare terraform response:", prepareTerraformResponse)
+	}
 	if errorBuffer.String() != "version: test-version, env name: test-env, config value: config-value, env value: env-value\n" {
 		log.Fatalln("unexpected prepare terraform debug output:", errorBuffer.String())
 	}
-	errorBuffer.Truncate(0)
-}
 
-func readAndCheckOutputLine(scanner *bufio.Scanner, expected map[string]interface{}) {
-	if !scanner.Scan() {
-		log.Fatalln("output finished")
-	}
-	line := scanner.Bytes()
-	var message map[string]interface{}
-	if err := json.Unmarshal(line, &message); err != nil {
-		log.Fatalln("error reading message:", err)
-	}
-	if fmt.Sprintf("%v", message) != fmt.Sprintf("%v", expected) {
-		log.Fatalln("unexpected message:", message)
-	}
+	errorBuffer.Truncate(0)
 }
 
 func TestCreateConfigureReleaseRequest(t *testing.T) {

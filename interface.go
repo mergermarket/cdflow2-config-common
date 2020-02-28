@@ -1,7 +1,5 @@
 package common
 
-import "io"
-
 // ConfigureReleaseRequest is the incoming configure release request format.
 type ConfigureReleaseRequest struct {
 	Version string
@@ -46,7 +44,7 @@ type PrepareTerraformResponse struct {
 
 // Handler has methods to handle each bit of config.
 type Handler interface {
-	ConfigureRelease(request *ConfigureReleaseRequest, response *ConfigureReleaseResponse, errorStream io.Writer) error
-	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, errorStream io.Writer, version string, config map[string]interface{}) error
-	PrepareTerraform(request *PrepareTerraformRequest, response *PrepareTerraformResponse, errorStream io.Writer) error
+	ConfigureRelease(request *ConfigureReleaseRequest, response *ConfigureReleaseResponse) error
+	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, version string, config map[string]interface{}) error
+	PrepareTerraform(request *PrepareTerraformRequest, response *PrepareTerraformResponse) error
 }
