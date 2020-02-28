@@ -74,7 +74,7 @@ func TestRun(t *testing.T) {
 
 	go common.Run(&handler{
 		errorStream: &errorBuffer,
-	}, []string{}, nil, nil, &errorBuffer, socketPath)
+	}, []string{}, nil, nil, socketPath)
 
 	checkRelease(&errorBuffer, socketPath)
 	checkPrepareTerraform(&errorBuffer, socketPath)
@@ -87,7 +87,7 @@ func forward(request interface{}, socketPath string) (interface{}, error) {
 	if err := json.NewEncoder(&requestBuffer).Encode(request); err != nil {
 		return nil, err
 	}
-	common.Run(&handler{}, []string{"forward"}, &requestBuffer, &responseBuffer, nil, socketPath)
+	common.Run(&handler{}, []string{"forward"}, &requestBuffer, &responseBuffer, socketPath)
 	var message map[string]interface{}
 	if err := json.NewDecoder(&responseBuffer).Decode(&message); err != nil {
 		return nil, err

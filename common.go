@@ -21,7 +21,7 @@ type message struct {
 const defaultSocketPath = "/sock"
 
 // Run handles all the IO, calling into the passed in Handler to do the actual work.
-func Run(handler Handler, args []string, readStream io.Reader, writeStream, errorStream io.Writer, overrideSocketPath string) {
+func Run(handler Handler, args []string, readStream io.Reader, writeStream io.Writer, overrideSocketPath string) {
 	socketPath := overrideSocketPath
 	if socketPath == "" {
 		socketPath = defaultSocketPath
@@ -29,7 +29,7 @@ func Run(handler Handler, args []string, readStream io.Reader, writeStream, erro
 	if len(args) == 1 && args[0] == "forward" {
 		forward(readStream, writeStream, socketPath)
 	} else {
-		listen(handler, errorStream, socketPath)
+		listen(handler, socketPath)
 	}
 }
 
@@ -41,9 +41,8 @@ func connect(socketPath string) *net.UnixConn {
 		if err == nil {
 			if connection, ok := connection.(*net.UnixConn); ok {
 				return connection
-			} else {
-				log.Panicf("unexpected type for connection: %T", connection)
 			}
+			log.Panicf("unexpected type for connection: %T", connection)
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -68,7 +67,7 @@ func forward(readStream io.Reader, writeStream io.Writer, socketPath string) {
 	}
 }
 
-func listen(handler Handler, errorStream io.Writer, socketPath string) {
+func listen(handler Handler, socketPath string) {
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
 		log.Panicf("could not listen on unix domain socket %v: %v", socketPath, err)
