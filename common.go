@@ -9,8 +9,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -29,7 +31,7 @@ func Run(handler Handler, args []string, readStream io.Reader, writeStream io.Wr
 	if len(args) == 1 && args[0] == "forward" {
 		forward(readStream, writeStream, socketPath)
 	} else {
-		listen(handler, socketPath)
+		Listen(handler, socketPath, getSigtermChannel())
 	}
 }
 
@@ -67,16 +69,33 @@ func forward(readStream io.Reader, writeStream io.Writer, socketPath string) {
 	}
 }
 
-func listen(handler Handler, socketPath string) {
+func getSigtermChannel() chan os.Signal {
+	result := make(chan os.Signal, 1)
+	signal.Notify(result, syscall.SIGTERM)
+	return result
+}
+
+func shouldStop(sigtermChannel chan os.Signal) bool {
+	select {
+	case <-sigtermChannel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Listen accepts connections and forwards requests and responses to and from the handler.
+func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
 		log.Panicf("could not listen on unix domain socket %v: %v", socketPath, err)
 	}
 	defer listener.Close()
+
 	var version string
 	var config map[string]interface{}
-	stopping := false
-	for !stopping {
+
+	for !shouldStop(sigtermChannel) {
 		connection, err := listener.Accept()
 		if err != nil {
 			log.Panicf("error accepting connection on unix domain socket %v: %v", socketPath, err)
@@ -99,9 +118,6 @@ func listen(handler Handler, socketPath string) {
 			response = uploadRelease(handler, rawRequest, version, config)
 		case "prepare_terraform":
 			response = prepareTerraform(handler, rawRequest)
-		case "stop":
-			stopping = true
-			response = map[string]interface{}{"message": "bye!"}
 		default:
 			log.Panicln("unknown message type:", request.Action)
 		}

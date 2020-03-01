@@ -65,6 +65,13 @@ func tempSock() string {
 	return f.Name()
 }
 
+type FakeSigterm struct{}
+
+func (FakeSigterm) String() string {
+	return "SIGTERM"
+}
+func (FakeSigterm) Signal() {}
+
 func TestRun(t *testing.T) {
 
 	var errorBuffer bytes.Buffer
@@ -72,13 +79,16 @@ func TestRun(t *testing.T) {
 	socketPath := tempSock()
 	defer os.Remove(socketPath)
 
-	go common.Run(&handler{
+	sigtermChannel := make(chan os.Signal, 1)
+
+	go common.Listen(&handler{
 		errorStream: &errorBuffer,
-	}, []string{}, nil, nil, socketPath)
+	}, socketPath, sigtermChannel)
 
 	checkRelease(&errorBuffer, socketPath)
 	checkPrepareTerraform(&errorBuffer, socketPath)
-	forward(map[string]string{"Action": "stop"}, socketPath)
+
+	sigtermChannel <- FakeSigterm{}
 }
 
 func forward(request interface{}, socketPath string) (interface{}, error) {
