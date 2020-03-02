@@ -9,6 +9,11 @@ import (
 
 // Forward forwards requests to the main process.
 func Forward(readStream io.Reader, writeStream io.Writer, socketPath string) {
+
+	if socketPath == "" {
+		socketPath = defaultSocketPath
+	}
+
 	connection := connect(socketPath)
 	defer connection.Close()
 	go func() {
