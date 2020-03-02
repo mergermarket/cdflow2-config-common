@@ -97,7 +97,7 @@ func forward(request interface{}, socketPath string) (interface{}, error) {
 	if err := json.NewEncoder(&requestBuffer).Encode(request); err != nil {
 		return nil, err
 	}
-	common.Run(&handler{}, []string{"forward"}, &requestBuffer, &responseBuffer, socketPath)
+	common.Forward(&requestBuffer, &responseBuffer, socketPath)
 	var message map[string]interface{}
 	if err := json.NewDecoder(&responseBuffer).Decode(&message); err != nil {
 		return nil, err

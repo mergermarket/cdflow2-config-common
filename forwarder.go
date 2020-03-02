@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-func forward(readStream io.Reader, writeStream io.Writer, socketPath string) {
+// Forward forwards requests to the main process.
+func Forward(readStream io.Reader, writeStream io.Writer, socketPath string) {
 	connection := connect(socketPath)
 	defer connection.Close()
 	go func() {

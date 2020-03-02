@@ -25,6 +25,7 @@ func getSigtermChannel() chan os.Signal {
 	return result
 }
 
+// AcceptResult is the result from an accept.
 type AcceptResult struct {
 	connection net.Conn
 	err        error
@@ -32,6 +33,14 @@ type AcceptResult struct {
 
 // Listen accepts connections and forwards requests and responses to and from the handler.
 func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
+
+	if socketPath == "" {
+		socketPath = defaultSocketPath
+	}
+
+	if sigtermChannel == nil {
+		sigtermChannel = getSigtermChannel()
+	}
 
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
