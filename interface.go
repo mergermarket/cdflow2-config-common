@@ -1,5 +1,16 @@
 package common
 
+// SetupRequest is the incoming setup request format.
+type SetupRequest struct {
+	Config map[string]interface{}
+	Env    map[string]string
+}
+
+// SetupResponse is the outgoing setup response format.
+type SetupResponse struct {
+	Success bool
+}
+
 // ConfigureReleaseRequest is the incoming configure release request format.
 type ConfigureReleaseRequest struct {
 	Version string
@@ -44,6 +55,7 @@ type PrepareTerraformResponse struct {
 
 // Handler has methods to handle each bit of config.
 type Handler interface {
+	Setup(request *SetupRequest, response *SetupResponse) error
 	ConfigureRelease(request *ConfigureReleaseRequest, response *ConfigureReleaseResponse) error
 	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, version string, config map[string]interface{}) error
 	PrepareTerraform(request *PrepareTerraformRequest, response *PrepareTerraformResponse) error

@@ -21,6 +21,14 @@ type handler struct {
 	errorStream io.Writer
 }
 
+func (handler *handler) Setup(request *common.SetupRequest, response *common.SetupResponse) error {
+	fmt.Fprintf(handler.errorStream, "env key: %v, config key: %v\n", request.Env["env-key"], request.Config["config-key"])
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
+	return nil
+}
+
 func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse) error {
 	fmt.Fprintf(handler.errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
 	response.Env["response-env-key"] = "response-env-value"
@@ -85,13 +93,14 @@ func TestRun(t *testing.T) {
 		errorStream: &errorBuffer,
 	}, socketPath, sigtermChannel)
 
+	checkSetup(&errorBuffer, socketPath)
 	checkRelease(&errorBuffer, socketPath)
 	checkPrepareTerraform(&errorBuffer, socketPath)
 
 	sigtermChannel <- FakeSigterm{}
 }
 
-func forward(request interface{}, socketPath string) (interface{}, error) {
+func forward(request interface{}, socketPath string) (map[string]interface{}, error) {
 	var requestBuffer bytes.Buffer
 	var responseBuffer bytes.Buffer
 	if err := json.NewEncoder(&requestBuffer).Encode(request); err != nil {
@@ -103,6 +112,24 @@ func forward(request interface{}, socketPath string) (interface{}, error) {
 		return nil, err
 	}
 	return message, nil
+}
+
+func checkSetup(errorBuffer *bytes.Buffer, socketPath string) {
+	setupResponse, err := forward(map[string]interface{}{
+		"Action": "setup",
+		"Config": map[string]interface{}{"config-key": "config-value"},
+		"Env":    map[string]string{"env-key": "env-value"},
+	}, socketPath)
+	if err != nil {
+		log.Fatalln("error calling setup:", err)
+	}
+	if success, ok := setupResponse["Success"].(bool); !ok || !success {
+		log.Fatalln("success false from setup")
+	}
+	if errorBuffer.String() != "env key: env-value, config key: config-value\n" {
+		log.Fatalln("unexpected setup debug output:", errorBuffer.String())
+	}
+	errorBuffer.Truncate(0)
 }
 
 func checkRelease(errorBuffer *bytes.Buffer, socketPath string) {
@@ -189,6 +216,20 @@ func checkPrepareTerraform(errorBuffer *bytes.Buffer, socketPath string) {
 	}
 
 	errorBuffer.Truncate(0)
+}
+
+func TestCreateSetupRequest(t *testing.T) {
+	request := common.CreateSetupRequest()
+	// tests that the maps are initialised, otherwise these cause a panic
+	request.Config["key"] = "value"
+	request.Env["key"] = "value"
+}
+
+func TestCreateSetupResponse(t *testing.T) {
+	response := common.CreateSetupResponse()
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
 }
 
 func TestCreateConfigureReleaseRequest(t *testing.T) {

@@ -84,6 +84,8 @@ func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
 		}
 		var response interface{}
 		switch request.Action {
+		case "setup":
+			response = setup(handler, rawRequest)
 		case "configure_release":
 			response, version, config = configureRelease(handler, rawRequest)
 		case "upload_release":
@@ -98,6 +100,18 @@ func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
 		}
 		connection.Close()
 	}
+}
+
+func setup(handler Handler, rawRequest []byte) *SetupResponse {
+	var request SetupRequest
+	if err := json.Unmarshal(rawRequest, &request); err != nil {
+		log.Fatalln("error parsing setup request:", err)
+	}
+	response := CreateSetupResponse()
+	if err := handler.Setup(&request, response); err != nil {
+		log.Fatalln("error in Setup:", err)
+	}
+	return response
 }
 
 func configureRelease(handler Handler, rawRequest []byte) (*ConfigureReleaseResponse, string, map[string]interface{}) {
@@ -135,6 +149,21 @@ func prepareTerraform(handler Handler, rawRequest []byte) *PrepareTerraformRespo
 		log.Fatalln("error in PrepareTerraform:", err)
 	}
 	return response
+}
+
+// CreateSetupRequest creates and returns an initialised SetupRequest - useful for testing config containers.
+func CreateSetupRequest() *SetupRequest {
+	var request SetupRequest
+	request.Env = make(map[string]string)
+	request.Config = make(map[string]interface{})
+	return &request
+}
+
+// CreateSetupResponse creates and returns an initialised SetupResponse.
+func CreateSetupResponse() *SetupResponse {
+	var response SetupResponse
+	response.Success = true
+	return &response
 }
 
 // CreateConfigureReleaseRequest creates and returns an initialised ConfigureReleaseRequest - useful for testing config containers.
