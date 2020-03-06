@@ -102,11 +102,29 @@ func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
 	}
 }
 
+func populateReleaseRequiredEnv(releaseRequirements map[string]map[string]interface{}, releaseRequiredEnv map[string][]string) {
+	for buildID, requirements := range releaseRequirements {
+		env, ok := requirements["env"].([]interface{})
+		if !ok {
+			continue
+		}
+		for i, value := range env {
+			value, ok := value.(string)
+			if !ok {
+				log.Panicf("non-string found in ReleaseRequirements.%v.env[%d]: %T", buildID, i, value)
+			}
+			releaseRequiredEnv[buildID] = append(releaseRequiredEnv[buildID], value)
+		}
+	}
+}
+
 func setup(handler Handler, rawRequest []byte) *SetupResponse {
 	var request SetupRequest
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing setup request:", err)
 	}
+	request.ReleaseRequiredEnv = make(map[string][]string)
+	populateReleaseRequiredEnv(request.ReleaseRequirements, request.ReleaseRequiredEnv)
 	response := CreateSetupResponse()
 	if err := handler.Setup(&request, response); err != nil {
 		log.Fatalln("error in Setup:", err)
@@ -119,6 +137,8 @@ func configureRelease(handler Handler, rawRequest []byte) (*ConfigureReleaseResp
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
 	}
+	request.ReleaseRequiredEnv = make(map[string][]string)
+	populateReleaseRequiredEnv(request.ReleaseRequirements, request.ReleaseRequiredEnv)
 	response := CreateConfigureReleaseResponse()
 	if err := handler.ConfigureRelease(&request, response); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)

@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	common "github.com/mergermarket/cdflow2-config-common"
@@ -15,48 +16,6 @@ import (
 
 type handler struct {
 	errorStream io.Writer
-}
-
-func (handler *handler) Setup(request *common.SetupRequest, response *common.SetupResponse) error {
-	fmt.Fprintf(handler.errorStream, "env key: %v, config key: %v\n", request.Env["env-key"], request.Config["config-key"])
-	if !response.Success {
-		log.Fatal("success didn't default to true")
-	}
-	return nil
-}
-
-func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse) error {
-	fmt.Fprintf(handler.errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
-	response.Env["response-env-key"] = "response-env-value"
-	if !response.Success {
-		log.Fatal("success didn't default to true")
-	}
-	return nil
-}
-
-func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, version string, config map[string]interface{}) error {
-	fmt.Fprintf(handler.errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"], config["config-key"])
-	response.Message = "test-uploaded-message"
-	if !response.Success {
-		log.Fatal("success didn't default to true")
-	}
-	return nil
-}
-
-func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse) error {
-	fmt.Fprintf(handler.errorStream, "version: %v, env name: %v, config value: %v, env value: %v\n", request.Version, request.EnvName, request.Config["config-key"], request.Env["env-key"])
-	response.Env = map[string]string{
-		"response-env-key": "response-env-value",
-	}
-	response.TerraformImage = "test-terraform-image"
-	response.TerraformBackendType = "test-backend-type"
-	response.TerraformBackendConfig = map[string]string{
-		"backend-key": "backend-value",
-	}
-	if !response.Success {
-		log.Fatal("success didn't default to true")
-	}
-	return nil
 }
 
 func tempSock() string {
@@ -110,11 +69,32 @@ func forward(request interface{}, socketPath string) (map[string]interface{}, er
 	return message, nil
 }
 
+func (handler *handler) Setup(request *common.SetupRequest, response *common.SetupResponse) error {
+	fmt.Fprintf(
+		handler.errorStream,
+		"env key: %v, config key: %v, release requirement: %v, required env: %v\n",
+		request.Env["env-key"],
+		request.Config["config-key"],
+		request.ReleaseRequirements["release"]["key"],
+		strings.Join(request.ReleaseRequiredEnv["release"], ", "),
+	)
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
+	return nil
+}
+
 func checkSetup(errorBuffer *bytes.Buffer, socketPath string) {
 	setupResponse, err := forward(map[string]interface{}{
 		"Action": "setup",
 		"Config": map[string]interface{}{"config-key": "config-value"},
 		"Env":    map[string]string{"env-key": "env-value"},
+		"ReleaseRequirements": map[string]map[string]interface{}{
+			"release": {
+				"env": []string{"a", "b"},
+				"key": "value",
+			},
+		},
 	}, socketPath)
 	if err != nil {
 		log.Fatalln("error calling setup:", err)
@@ -122,10 +102,28 @@ func checkSetup(errorBuffer *bytes.Buffer, socketPath string) {
 	if success, ok := setupResponse["Success"].(bool); !ok || !success {
 		log.Fatalln("success false from setup")
 	}
-	if errorBuffer.String() != "env key: env-value, config key: config-value\n" {
+	if errorBuffer.String() != "env key: env-value, config key: config-value, release requirement: value, required env: a, b\n" {
 		log.Fatalln("unexpected setup debug output:", errorBuffer.String())
 	}
 	errorBuffer.Truncate(0)
+}
+
+func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse) error {
+	fmt.Fprintf(handler.errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
+	response.Env["response-env-key"] = "response-env-value"
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
+	return nil
+}
+
+func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, version string, config map[string]interface{}) error {
+	fmt.Fprintf(handler.errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"], config["config-key"])
+	response.Message = "test-uploaded-message"
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
+	return nil
 }
 
 func checkRelease(errorBuffer *bytes.Buffer, socketPath string) {
@@ -134,6 +132,12 @@ func checkRelease(errorBuffer *bytes.Buffer, socketPath string) {
 		"Version": "test-version",
 		"Config":  map[string]interface{}{"config-key": "config-value"},
 		"Env":     map[string]string{"env-key": "env-value"},
+		"ReleaseRequirements": map[string]map[string]interface{}{
+			"release": {
+				"env": []string{"a", "b"},
+				"key": "value",
+			},
+		},
 	}, socketPath)
 	if err != nil {
 		log.Fatalln("error calling configure release:", err)
@@ -176,6 +180,22 @@ func checkRelease(errorBuffer *bytes.Buffer, socketPath string) {
 		log.Fatalln("unexpected upload release debug output:", errorBuffer.String())
 	}
 	errorBuffer.Truncate(0)
+}
+
+func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse) error {
+	fmt.Fprintf(handler.errorStream, "version: %v, env name: %v, config value: %v, env value: %v\n", request.Version, request.EnvName, request.Config["config-key"], request.Env["env-key"])
+	response.Env = map[string]string{
+		"response-env-key": "response-env-value",
+	}
+	response.TerraformImage = "test-terraform-image"
+	response.TerraformBackendType = "test-backend-type"
+	response.TerraformBackendConfig = map[string]string{
+		"backend-key": "backend-value",
+	}
+	if !response.Success {
+		log.Fatal("success didn't default to true")
+	}
+	return nil
 }
 
 func checkPrepareTerraform(errorBuffer *bytes.Buffer, socketPath string) {
