@@ -7,7 +7,7 @@ func CreateSetupRequest() *SetupRequest {
 	var request SetupRequest
 	request.Env = make(map[string]string)
 	request.Config = make(map[string]interface{})
-	request.ReleaseRequirements = make(map[string]interface{})
+	request.ReleaseRequirements = make(map[string]map[string]interface{})
 	return &request
 }
 
@@ -23,7 +23,7 @@ func CreateConfigureReleaseRequest() *ConfigureReleaseRequest {
 	var request ConfigureReleaseRequest
 	request.Env = make(map[string]string)
 	request.Config = make(map[string]interface{})
-	request.ReleaseRequirements = make(map[string]interface{})
+	request.ReleaseRequirements = make(map[string]map[string]interface{})
 	return &request
 }
 

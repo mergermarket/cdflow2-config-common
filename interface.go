@@ -7,7 +7,7 @@ type SetupRequest struct {
 	Component           string
 	Commit              string
 	Team                string
-	ReleaseRequirements map[string]interface{}
+	ReleaseRequirements map[string]map[string]interface{}
 }
 
 // SetupResponse is the outgoing setup response format.
@@ -23,7 +23,7 @@ type ConfigureReleaseRequest struct {
 	Team                string
 	Config              map[string]interface{}
 	Env                 map[string]string
-	ReleaseRequirements map[string]interface{}
+	ReleaseRequirements map[string]map[string]interface{}
 }
 
 // ConfigureReleaseResponse is the outgoing configure release response format.
