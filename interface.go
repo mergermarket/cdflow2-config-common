@@ -1,14 +1,19 @@
 package common
 
-// SetupRequest is the incoming setup request format.
-type SetupRequest struct {
-	Config              map[string]interface{}
-	Env                 map[string]string
+// PrepareReleaseRequest contains the fields that are common for setup and configure release requests.
+type PrepareReleaseRequest struct {
 	Component           string
 	Commit              string
 	Team                string
+	Config              map[string]interface{}
+	Env                 map[string]string
 	ReleaseRequirements map[string]map[string]interface{}
-	ReleaseRequiredEnv  map[string][]string
+	ReleaseRequiredEnv  map[string][]string `json:"-"`
+}
+
+// SetupRequest is the incoming setup request format.
+type SetupRequest struct {
+	PrepareReleaseRequest
 }
 
 // SetupResponse is the outgoing setup response format.
@@ -18,14 +23,8 @@ type SetupResponse struct {
 
 // ConfigureReleaseRequest is the incoming configure release request format.
 type ConfigureReleaseRequest struct {
-	Version             string
-	Component           string
-	Commit              string
-	Team                string
-	Config              map[string]interface{}
-	Env                 map[string]string
-	ReleaseRequirements map[string]map[string]interface{}
-	ReleaseRequiredEnv  map[string][]string `json:"-"`
+	PrepareReleaseRequest
+	Version string
 }
 
 // ConfigureReleaseResponse is the outgoing configure release response format.
