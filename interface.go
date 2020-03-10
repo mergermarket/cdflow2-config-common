@@ -30,7 +30,7 @@ type ConfigureReleaseRequest struct {
 
 // ConfigureReleaseResponse is the outgoing configure release response format.
 type ConfigureReleaseResponse struct {
-	Env     map[string]string
+	Env     map[string]map[string]string
 	Success bool
 }
 

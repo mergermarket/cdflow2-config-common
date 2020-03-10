@@ -32,7 +32,7 @@ func CreateConfigureReleaseRequest() *ConfigureReleaseRequest {
 // CreateConfigureReleaseResponse creates and returns an initialised ConfigureReleaseResponse.
 func CreateConfigureReleaseResponse() *ConfigureReleaseResponse {
 	var response ConfigureReleaseResponse
-	response.Env = make(map[string]string)
+	response.Env = make(map[string]map[string]string)
 	response.Success = true
 	return &response
 }
