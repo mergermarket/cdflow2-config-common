@@ -25,7 +25,6 @@ type ConfigureReleaseRequest struct {
 	Config              map[string]interface{}
 	Env                 map[string]string
 	ReleaseRequirements map[string]map[string]interface{}
-	ReleaseRequiredEnv  map[string][]string `json:"-"`
 }
 
 // ConfigureReleaseResponse is the outgoing configure release response format.

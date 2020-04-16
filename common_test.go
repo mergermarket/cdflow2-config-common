@@ -35,7 +35,6 @@ func TestCreateConfigureReleaseRequest(t *testing.T) {
 	request.Config["key"] = "value"
 	request.Env["key"] = "value"
 	request.ReleaseRequirements["release-key"] = map[string]interface{}{"key": "value"}
-	request.ReleaseRequiredEnv["release-key"] = []string{"a", "b"}
 }
 
 func TestCreateConfigureReleaseResponse(t *testing.T) {

@@ -25,7 +25,6 @@ func CreateConfigureReleaseRequest() *ConfigureReleaseRequest {
 	request.Env = make(map[string]string)
 	request.Config = make(map[string]interface{})
 	request.ReleaseRequirements = make(map[string]map[string]interface{})
-	request.ReleaseRequiredEnv = make(map[string][]string)
 	return &request
 }
 

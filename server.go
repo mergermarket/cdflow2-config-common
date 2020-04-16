@@ -137,8 +137,6 @@ func configureRelease(handler Handler, rawRequest []byte) (*ConfigureReleaseResp
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
 	}
-	request.ReleaseRequiredEnv = make(map[string][]string)
-	populateReleaseRequiredEnv(request.ReleaseRequirements, request.ReleaseRequiredEnv)
 	response := CreateConfigureReleaseResponse()
 	if err := handler.ConfigureRelease(&request, response); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)
