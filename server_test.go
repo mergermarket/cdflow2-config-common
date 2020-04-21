@@ -73,11 +73,10 @@ func forward(request interface{}, socketPath string) (map[string]interface{}, er
 func (handler *handler) Setup(request *common.SetupRequest, response *common.SetupResponse) error {
 	fmt.Fprintf(
 		handler.errorStream,
-		"env key: %v, config key: %v, release requirement: %v, required env: %v\n",
+		"env key: %v, config key: %v, release needs: %v\n",
 		request.Env["env-key"],
 		request.Config["config-key"],
-		request.ReleaseRequirements["release"]["key"],
-		strings.Join(request.ReleaseRequiredEnv["release"], ", "),
+		strings.Join(request.ReleaseRequirements["release"].Needs, ", "),
 	)
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
@@ -92,8 +91,7 @@ func checkSetup(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 		"Env":    map[string]string{"env-key": "env-value"},
 		"ReleaseRequirements": map[string]map[string]interface{}{
 			"release": {
-				"env": []string{"a", "b"},
-				"key": "value",
+				"needs": []string{"a", "b"},
 			},
 		},
 	}, socketPath)
@@ -103,7 +101,7 @@ func checkSetup(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 	if success, ok := setupResponse["Success"].(bool); !ok || !success {
 		t.Fatal("success false from setup")
 	}
-	if errorBuffer.String() != "env key: env-value, config key: config-value, release requirement: value, required env: a, b\n" {
+	if errorBuffer.String() != "env key: env-value, config key: config-value, release needs: a, b\n" {
 		t.Fatal("unexpected setup debug output:", errorBuffer.String())
 	}
 	errorBuffer.Truncate(0)

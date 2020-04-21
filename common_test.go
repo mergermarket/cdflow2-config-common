@@ -18,8 +18,7 @@ func TestCreateSetupRequest(t *testing.T) {
 	// tests that the maps are initialised, otherwise these cause a panic
 	request.Config["key"] = "value"
 	request.Env["key"] = "value"
-	request.ReleaseRequirements["release-key"] = map[string]interface{}{"key": "value"}
-	request.ReleaseRequiredEnv["release-key"] = []string{"a", "b"}
+	request.ReleaseRequirements["release-key"] = &common.ReleaseRequirements{Needs: []string{"need1"}}
 }
 
 func TestCreateSetupResponse(t *testing.T) {
@@ -34,7 +33,7 @@ func TestCreateConfigureReleaseRequest(t *testing.T) {
 	// tests that the maps are initialised, otherwise these cause a panic
 	request.Config["key"] = "value"
 	request.Env["key"] = "value"
-	request.ReleaseRequirements["release-key"] = map[string]interface{}{"key": "value"}
+	request.ReleaseRequirements["release-key"] = &common.ReleaseRequirements{Needs: []string{"need1"}}
 }
 
 func TestCreateConfigureReleaseResponse(t *testing.T) {

@@ -1,5 +1,10 @@
 package common
 
+// ReleaseRequirements contains a list of needs of a build container.
+type ReleaseRequirements struct {
+	Needs []string
+}
+
 // PrepareReleaseRequest contains the fields that are common for setup and configure release requests.
 type PrepareReleaseRequest struct {
 	Component           string
@@ -7,7 +12,7 @@ type PrepareReleaseRequest struct {
 	Team                string
 	Config              map[string]interface{}
 	Env                 map[string]string
-	ReleaseRequirements map[string]map[string]interface{}
+	ReleaseRequirements map[string]*ReleaseRequirements
 }
 
 // SetupRequest is the incoming setup request format.
