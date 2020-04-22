@@ -136,7 +136,7 @@ func uploadRelease(handler Handler, rawRequest []byte, configureReleaseRequest *
 		log.Fatal("could not create temporary file for release:", err)
 	}
 	defer os.Remove(file.Name())
-	if err := ZipRelease(file, releaseDir, configureReleaseRequest.Component, configureReleaseRequest.Version); err != nil {
+	if err := ZipRelease(file, releaseDir, configureReleaseRequest.Component, configureReleaseRequest.Version, request.TerraformImage); err != nil {
 		log.Fatal("could not zip release:", err)
 	}
 	file.Seek(0, 0)
@@ -161,9 +161,14 @@ func prepareTerraform(handler Handler, rawRequest []byte) *PrepareTerraformRespo
 }
 
 // ZipRelease zips the release folder to a stream.
-func ZipRelease(writer io.Writer, dir, component, version string) error {
+func ZipRelease(writer io.Writer, dir, component, version, terraformImage string) error {
 	zipWriter := zip.NewWriter(writer)
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	writer, err := zipWriter.Create(filepath.Join(component+"-"+version, "terraform-image"))
+	if err != nil {
+		return err
+	}
+	writer.Write([]byte(terraformImage))
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
 		}
@@ -188,8 +193,7 @@ func ZipRelease(writer io.Writer, dir, component, version string) error {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 	return zipWriter.Close()

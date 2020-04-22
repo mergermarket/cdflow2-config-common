@@ -85,7 +85,7 @@ func TestZipRelease(t *testing.T) {
 	var buffer bytes.Buffer
 
 	// When
-	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version"); err != nil {
+	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version", "test-terraform-image"); err != nil {
 		t.Fatal("error zipping release:", err)
 	}
 
@@ -94,8 +94,14 @@ func TestZipRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal("could not create zip reader:", err)
 	}
-	if len(zipReader.File) != 1 || zipReader.File[0].Name != "test-component-test-version/test.txt" {
+	if len(zipReader.File) != 2 {
+		t.Fatalf("expected %v, got %v", 2, len(zipReader.File))
+	}
+	if zipReader.File[0].Name != "test-component-test-version/terraform-image" {
 		t.Fatal("unexpected filename in zip:", zipReader.File[0].Name)
+	}
+	if zipReader.File[1].Name != "test-component-test-version/test.txt" {
+		t.Fatal("unexpected filename in zip:", zipReader.File[1].Name)
 	}
 }
 
@@ -110,7 +116,7 @@ func TestUnzipRelease(t *testing.T) {
 	releaseDir := releaseDir(t)
 	var buffer bytes.Buffer
 
-	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version"); err != nil {
+	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version", "test-terraform-image"); err != nil {
 		t.Fatal("error zipping release:", err)
 	}
 	data := buffer.Bytes()
