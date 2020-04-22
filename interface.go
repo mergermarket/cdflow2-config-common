@@ -1,5 +1,7 @@
 package common
 
+import "io"
+
 // ReleaseRequirements contains a list of needs of a build container.
 type ReleaseRequirements struct {
 	Needs []string
@@ -70,6 +72,6 @@ type PrepareTerraformResponse struct {
 type Handler interface {
 	Setup(request *SetupRequest, response *SetupResponse) error
 	ConfigureRelease(request *ConfigureReleaseRequest, response *ConfigureReleaseResponse) error
-	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, version string, config map[string]interface{}) error
+	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, configureReleaseRequest *ConfigureReleaseRequest, releaseReader io.ReadSeeker) error
 	PrepareTerraform(request *PrepareTerraformRequest, response *PrepareTerraformResponse) error
 }

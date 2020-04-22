@@ -47,7 +47,7 @@ func TestRun(t *testing.T) {
 	go common.Listen(&handler{
 		errorStream: &errorBuffer,
 		t:           t,
-	}, socketPath, sigtermChannel)
+	}, socketPath, releaseDir(t), sigtermChannel)
 
 	checkSetup(t, &errorBuffer, socketPath)
 	checkRelease(t, &errorBuffer, socketPath)
@@ -116,8 +116,12 @@ func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest
 	return nil
 }
 
-func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, version string, config map[string]interface{}) error {
-	fmt.Fprintf(handler.errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n", request.TerraformImage, request.ReleaseMetadata["release"]["release-key"], config["config-key"])
+func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, configureReleaseRequest *common.ConfigureReleaseRequest, releaseReader io.ReadSeeker) error {
+	fmt.Fprintf(handler.errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n",
+		request.TerraformImage,
+		request.ReleaseMetadata["release"]["release-key"],
+		configureReleaseRequest.Config["config-key"],
+	)
 	response.Message = "test-uploaded-message"
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
@@ -143,7 +147,7 @@ func checkRelease(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 	}
 	if fmt.Sprintf("%v", configureReleaseResponse) != fmt.Sprintf("%v", map[string]interface{}{
 		"Env": map[string]map[string]string{
-			"build-id": map[string]string{
+			"build-id": {
 				"response-env-key": "response-env-value",
 			},
 		},
@@ -162,7 +166,7 @@ func checkRelease(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 		"Action":         "upload_release",
 		"TerraformImage": "test-terraform-image",
 		"ReleaseMetadata": map[string]map[string]string{
-			"release": map[string]string{
+			"release": {
 				"release-key": "release-value",
 			},
 		},

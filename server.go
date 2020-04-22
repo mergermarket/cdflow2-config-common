@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -32,7 +33,7 @@ type AcceptResult struct {
 }
 
 // Listen accepts connections and forwards requests and responses to and from the handler.
-func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
+func Listen(handler Handler, socketPath, releaseDir string, sigtermChannel chan os.Signal) {
 
 	if socketPath == "" {
 		socketPath = defaultSocketPath
@@ -56,8 +57,7 @@ func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
 		}
 	}()
 
-	var version string
-	var config map[string]interface{}
+	var configureReleaseRequest *ConfigureReleaseRequest
 
 	for {
 		var acceptResult AcceptResult
@@ -87,9 +87,9 @@ func Listen(handler Handler, socketPath string, sigtermChannel chan os.Signal) {
 		case "setup":
 			response = setup(handler, rawRequest)
 		case "configure_release":
-			response, version, config = configureRelease(handler, rawRequest)
+			response, configureReleaseRequest = configureRelease(handler, rawRequest)
 		case "upload_release":
-			response = uploadRelease(handler, rawRequest, version, config)
+			response = uploadRelease(handler, rawRequest, configureReleaseRequest, releaseDir)
 		case "prepare_terraform":
 			response = prepareTerraform(handler, rawRequest)
 		default:
@@ -114,7 +114,7 @@ func setup(handler Handler, rawRequest []byte) *SetupResponse {
 	return response
 }
 
-func configureRelease(handler Handler, rawRequest []byte) (*ConfigureReleaseResponse, string, map[string]interface{}) {
+func configureRelease(handler Handler, rawRequest []byte) (*ConfigureReleaseResponse, *ConfigureReleaseRequest) {
 	var request ConfigureReleaseRequest
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing configure release request:", err)
@@ -123,17 +123,26 @@ func configureRelease(handler Handler, rawRequest []byte) (*ConfigureReleaseResp
 	if err := handler.ConfigureRelease(&request, response); err != nil {
 		log.Fatalln("error in ConfigureRelease:", err)
 	}
-	return response, request.Version, request.Config
+	return response, &request
 }
 
-func uploadRelease(handler Handler, rawRequest []byte, version string, config map[string]interface{}) *UploadReleaseResponse {
+func uploadRelease(handler Handler, rawRequest []byte, configureReleaseRequest *ConfigureReleaseRequest, releaseDir string) *UploadReleaseResponse {
 	var request UploadReleaseRequest
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing upload release request:", err)
 	}
-	// TODO zip up /release folder here
+	file, err := ioutil.TempFile("", "cdflow2-config-common-release")
+	if err != nil {
+		log.Fatal("could not create temporary file for release:", err)
+	}
+	defer os.Remove(file.Name())
+	if err := ZipRelease(file, releaseDir, configureReleaseRequest.Component, configureReleaseRequest.Version); err != nil {
+		log.Fatal("could not zip release:", err)
+	}
+	file.Seek(0, 0)
+
 	response := CreateUploadReleaseResponse()
-	if err := handler.UploadRelease(&request, response, version, config); err != nil {
+	if err := handler.UploadRelease(&request, response, configureReleaseRequest, file); err != nil {
 		log.Fatalln("error in UploadRelease:", err)
 	}
 	return response
