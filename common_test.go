@@ -72,6 +72,7 @@ func TestCreatePrepareTerraformResponse(t *testing.T) {
 }
 
 func releaseDir(t *testing.T) string {
+	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("couldn't get test filename")
@@ -116,14 +117,20 @@ func TestUnzipRelease(t *testing.T) {
 	releaseDir := releaseDir(t)
 	var buffer bytes.Buffer
 
-	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version", "test-terraform-image"); err != nil {
+	terraformImage := "test-terraform-image"
+
+	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version", terraformImage); err != nil {
 		t.Fatal("error zipping release:", err)
 	}
 	data := buffer.Bytes()
 
 	// When
-	if err := common.UnzipRelease(bytes.NewReader(data), int64(len(data)), dir, "test-component", "test-version"); err != nil {
+	gotTerraformImage, err := common.UnzipRelease(bytes.NewReader(data), dir, "test-component", "test-version")
+	if err != nil {
 		t.Fatal("unexpected error unzipping release:", err)
+	}
+	if gotTerraformImage != terraformImage {
+		t.Fatalf("got %q, wanted %q", gotTerraformImage, terraformImage)
 	}
 
 	// Then

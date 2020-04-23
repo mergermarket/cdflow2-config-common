@@ -16,6 +16,7 @@ import (
 type handler struct {
 	errorStream io.Writer
 	t           *testing.T
+	releaseData bytes.Buffer
 }
 
 func tempSock(t *testing.T) string {
@@ -126,6 +127,9 @@ func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, resp
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
+	if _, err := io.Copy(&handler.releaseData, releaseReader); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -187,7 +191,7 @@ func checkRelease(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 	errorBuffer.Truncate(0)
 }
 
-func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse) error {
+func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse) (io.Reader, error) {
 	fmt.Fprintf(handler.errorStream, "version: %v, env name: %v, config value: %v, env value: %v\n", request.Version, request.EnvName, request.Config["config-key"], request.Env["env-key"])
 	response.Env = map[string]string{
 		"response-env-key": "response-env-value",
@@ -200,7 +204,8 @@ func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
-	return nil
+
+	return &handler.releaseData, nil
 }
 
 func checkPrepareTerraform(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {

@@ -91,7 +91,7 @@ func Listen(handler Handler, socketPath, releaseDir string, sigtermChannel chan 
 		case "upload_release":
 			response = uploadRelease(handler, rawRequest, configureReleaseRequest, releaseDir)
 		case "prepare_terraform":
-			response = prepareTerraform(handler, rawRequest)
+			response = prepareTerraform(handler, rawRequest, releaseDir)
 		default:
 			log.Panicln("unknown message type:", request.Action)
 		}
@@ -148,15 +148,21 @@ func uploadRelease(handler Handler, rawRequest []byte, configureReleaseRequest *
 	return response
 }
 
-func prepareTerraform(handler Handler, rawRequest []byte) *PrepareTerraformResponse {
+func prepareTerraform(handler Handler, rawRequest []byte, releaseDir string) *PrepareTerraformResponse {
 	var request PrepareTerraformRequest
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing prepare terraform request:", err)
 	}
 	response := CreatePrepareTerraformResponse()
-	if err := handler.PrepareTerraform(&request, response); err != nil {
+	reader, err := handler.PrepareTerraform(&request, response)
+	if err != nil {
 		log.Fatalln("error in PrepareTerraform:", err)
 	}
+	terraformImage, err := UnzipRelease(reader, releaseDir, request.Component, request.Version)
+	if err != nil {
+		log.Fatalln("error unzipping release in PrepareTerraform:", err)
+	}
+	response.TerraformImage = terraformImage
 	return response
 }
 
@@ -200,45 +206,53 @@ func ZipRelease(writer io.Writer, dir, component, version, terraformImage string
 }
 
 // UnzipRelease unzips the release.
-func UnzipRelease(reader io.Reader, size int64, dir, component, version string) error {
+func UnzipRelease(reader io.Reader, dir, component, version string) (string, error) {
 	contents, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return err
+		return "", err
 	}
-	zipReader, err := zip.NewReader(bytes.NewReader(contents), size)
+	zipReader, err := zip.NewReader(bytes.NewReader(contents), int64(len(contents)))
 	if err != nil {
-		return nil
+		return "", err
 	}
 	for _, file := range zipReader.File {
 		if file.FileInfo().IsDir() {
 			continue
 		}
 		if file.Name[0] == '/' {
-			return fmt.Errorf("error in release zip, unexpected absolute path \"%v\"", file.Name[0])
+			return "", fmt.Errorf("error in release zip, unexpected absolute path \"%v\"", file.Name[0])
 		}
 		prefix := component + "-" + version
 		parts := strings.Split(file.Name, "/")
 		if parts[0] != prefix {
-			return fmt.Errorf("error in release zip, expected prefix \"%v\", got \"%v\"", prefix, parts[0])
+			return "", fmt.Errorf("error in release zip, expected prefix \"%v\", got \"%v\"", prefix, parts[0])
 		}
 		destFilename := filepath.Join(dir, filepath.Join(parts[1:]...))
 		reader, err := file.Open()
 		if err != nil {
-			return err
+			return "", err
 		}
 		defer reader.Close()
 
 		if err = os.MkdirAll(filepath.Dir(destFilename), os.FileMode(0755)); err != nil {
-			return err
+			return "", err
 		}
 		writer, err := os.Create(destFilename)
 		if err != nil {
-			return err
+			return "", err
 		}
 		defer writer.Close()
 		if _, err := io.Copy(writer, reader); err != nil {
-			return err
+			return "", err
 		}
 	}
-	return nil
+	terraformImageFilename := filepath.Join(component+"-"+version, "terraform-image")
+	terraformImage, err := ioutil.ReadFile(terraformImageFilename)
+	if err != nil {
+		return "", err
+	}
+	if err := os.Remove(terraformImageFilename); err != nil {
+		return "", err
+	}
+	return string(terraformImage), nil
 }
