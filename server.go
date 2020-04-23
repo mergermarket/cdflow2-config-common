@@ -67,7 +67,7 @@ func Listen(handler Handler, socketPath, releaseDir string, sigtermChannel chan 
 			return
 		case acceptResult = <-acceptChannel:
 			if acceptResult.err != nil {
-				log.Panicln("error accepting connetion:", err)
+				log.Panicln("error accepting connection:", err)
 			}
 			connection = acceptResult.connection
 		}

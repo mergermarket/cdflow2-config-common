@@ -210,9 +210,10 @@ func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest
 
 func checkPrepareTerraform(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 	prepareTerraformResponse, err := forward(map[string]interface{}{
-		"Action":  "prepare_terraform",
-		"Version": "test-version",
-		"EnvName": "test-env",
+		"Action":    "prepare_terraform",
+		"Version":   "test-version",
+		"EnvName":   "test-env",
+		"Component": "test-component",
 		"Config": map[string]interface{}{
 			"config-key": "config-value",
 		},
