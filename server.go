@@ -158,11 +158,13 @@ func prepareTerraform(handler Handler, rawRequest []byte, releaseDir string) *Pr
 	if err != nil {
 		log.Fatalln("error in PrepareTerraform:", err)
 	}
-	terraformImage, err := UnzipRelease(reader, releaseDir, request.Component, request.Version)
-	if err != nil {
-		log.Fatalln("error unzipping release in PrepareTerraform:", err)
+	if response.Success {
+		terraformImage, err := UnzipRelease(reader, releaseDir, request.Component, request.Version)
+		if err != nil {
+			log.Fatalln("error unzipping release in PrepareTerraform:", err)
+		}
+		response.TerraformImage = terraformImage
 	}
-	response.TerraformImage = terraformImage
 	return response
 }
 

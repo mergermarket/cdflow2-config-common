@@ -2,4 +2,4 @@
 
 set -e
 
-go test .
+go test -v .
