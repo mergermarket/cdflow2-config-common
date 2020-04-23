@@ -200,8 +200,12 @@ func ZipRelease(writer io.Writer, dir, component, version, terraformImage string
 }
 
 // UnzipRelease unzips the release.
-func UnzipRelease(reader io.ReaderAt, size int64, dir, component, version string) error {
-	zipReader, err := zip.NewReader(reader, size)
+func UnzipRelease(reader io.Reader, size int64, dir, component, version string) error {
+	contents, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	zipReader, err := zip.NewReader(bytes.NewReader(contents), size)
 	if err != nil {
 		return nil
 	}
