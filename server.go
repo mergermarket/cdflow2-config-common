@@ -168,8 +168,13 @@ func prepareTerraform(handler Handler, rawRequest []byte, releaseDir string) *Pr
 
 // ZipRelease zips the release folder to a stream.
 func ZipRelease(writer io.Writer, dir, component, version, terraformImage string) error {
+	if component == "" {
+		panic("no component")
+	}
+	prefix := component + "-" + version
 	zipWriter := zip.NewWriter(writer)
-	writer, err := zipWriter.Create(filepath.Join(component+"-"+version, "terraform-image"))
+	terraformImageFilename := filepath.Join(prefix, "terraform-image")
+	writer, err := zipWriter.Create(terraformImageFilename)
 	if err != nil {
 		return err
 	}
@@ -183,7 +188,7 @@ func ZipRelease(writer io.Writer, dir, component, version, terraformImage string
 			return err
 		}
 
-		writer, err := zipWriter.Create(filepath.Join(component+"-"+version, relativePath))
+		writer, err := zipWriter.Create(filepath.Join(prefix, relativePath))
 		if err != nil {
 			return err
 		}
@@ -215,6 +220,7 @@ func UnzipRelease(reader io.Reader, dir, component, version string) (string, err
 	if err != nil {
 		return "", err
 	}
+	var terraformImageBuffer bytes.Buffer
 	for _, file := range zipReader.File {
 		if file.FileInfo().IsDir() {
 			continue
@@ -227,13 +233,19 @@ func UnzipRelease(reader io.Reader, dir, component, version string) (string, err
 		if parts[0] != prefix {
 			return "", fmt.Errorf("error in release zip, expected prefix \"%v\", got \"%v\"", prefix, parts[0])
 		}
-		destFilename := filepath.Join(dir, filepath.Join(parts[1:]...))
+
 		reader, err := file.Open()
 		if err != nil {
 			return "", err
 		}
 		defer reader.Close()
 
+		if len(parts) == 2 && parts[1] == "terraform-image" {
+			io.Copy(&terraformImageBuffer, reader)
+			continue
+		}
+
+		destFilename := filepath.Join(dir, filepath.Join(parts[1:]...))
 		if err = os.MkdirAll(filepath.Dir(destFilename), os.FileMode(0755)); err != nil {
 			return "", err
 		}
@@ -246,13 +258,8 @@ func UnzipRelease(reader io.Reader, dir, component, version string) (string, err
 			return "", err
 		}
 	}
-	terraformImageFilename := filepath.Join(component+"-"+version, "terraform-image")
-	terraformImage, err := ioutil.ReadFile(terraformImageFilename)
-	if err != nil {
-		return "", err
+	if terraformImageBuffer.String() == "" {
+		panic("did not find terraform-image in zip")
 	}
-	if err := os.Remove(terraformImageFilename); err != nil {
-		return "", err
-	}
-	return string(terraformImage), nil
+	return string(terraformImageBuffer.String()), nil
 }

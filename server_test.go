@@ -135,10 +135,11 @@ func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, resp
 
 func checkRelease(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 	configureReleaseResponse, err := forward(map[string]interface{}{
-		"Action":  "configure_release",
-		"Version": "test-version",
-		"Config":  map[string]interface{}{"config-key": "config-value"},
-		"Env":     map[string]string{"env-key": "env-value"},
+		"Action":    "configure_release",
+		"Version":   "test-version",
+		"Component": "test-component",
+		"Config":    map[string]interface{}{"config-key": "config-value"},
+		"Env":       map[string]string{"env-key": "env-value"},
 		"ReleaseRequirements": map[string]map[string]interface{}{
 			"release": {
 				"env": []string{"a", "b"},
