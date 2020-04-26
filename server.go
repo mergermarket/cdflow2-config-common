@@ -190,7 +190,13 @@ func ZipRelease(writer io.Writer, dir, component, version, terraformImage string
 			return err
 		}
 
-		writer, err := zipWriter.Create(filepath.Join(prefix, relativePath))
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+		header.Name = filepath.Join(prefix, relativePath)
+
+		writer, err := zipWriter.CreateHeader(header)
 		if err != nil {
 			return err
 		}
@@ -205,6 +211,7 @@ func ZipRelease(writer io.Writer, dir, component, version, terraformImage string
 		if err != nil {
 			return err
 		}
+
 		return nil
 	}); err != nil {
 		return err
@@ -251,7 +258,7 @@ func UnzipRelease(reader io.Reader, dir, component, version string) (string, err
 		if err = os.MkdirAll(filepath.Dir(destFilename), os.FileMode(0755)); err != nil {
 			return "", err
 		}
-		writer, err := os.Create(destFilename)
+		writer, err := os.OpenFile(destFilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
 		if err != nil {
 			return "", err
 		}
