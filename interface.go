@@ -1,5 +1,7 @@
 package common
 
+import "io"
+
 // ReleaseRequirements contains a list of needs of a build container.
 type ReleaseRequirements struct {
 	Needs []string
@@ -82,4 +84,14 @@ type Handler interface {
 	ConfigureRelease(request *ConfigureReleaseRequest, response *ConfigureReleaseResponse) error
 	UploadRelease(request *UploadReleaseRequest, response *UploadReleaseResponse, configureReleaseRequest *ConfigureReleaseRequest, releaseDir string) error
 	PrepareTerraform(request *PrepareTerraformRequest, response *PrepareTerraformResponse, releaseDir string) error
+}
+
+// ReleaseLoader helps load a release from block storage.
+type ReleaseLoader interface {
+	Load(reader io.Reader, component, version, releaseDir string) (string, error)
+}
+
+// ReleaseSaver helps save a release to block storage.
+type ReleaseSaver interface {
+	Save(component, version, terraformImage, releaseDir string) (io.ReadCloser, error)
 }

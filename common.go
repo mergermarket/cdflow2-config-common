@@ -74,8 +74,15 @@ func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
 	return &response
 }
 
-// UnpackRelease unpacks a release into a release directory.
-func UnpackRelease(reader io.Reader, component, version, releaseDir string) (string, error) {
+type releaseLoader struct{}
+
+// CreateReleaseLoader returns a ReleaseLoader.
+func CreateReleaseLoader() ReleaseLoader {
+	return &releaseLoader{}
+}
+
+// Load unpacks a release into a release directory.
+func (*releaseLoader) Load(reader io.Reader, component, version, releaseDir string) (string, error) {
 	terraformImage, err := UnzipRelease(reader, releaseDir, component, version)
 	if err != nil {
 		log.Fatalln("error unzipping release in PrepareTerraform:", err)
@@ -83,8 +90,15 @@ func UnpackRelease(reader io.Reader, component, version, releaseDir string) (str
 	return terraformImage, nil
 }
 
-// GetReleaseReader returns a reader for the release zip.
-func GetReleaseReader(component, version, terraformImage, releaseDir string) (io.ReadCloser, error) {
+type releaseSaver struct{}
+
+// CreateReleaseSaver returns a ReleaseSaver.
+func CreateReleaseSaver() ReleaseSaver {
+	return &releaseSaver{}
+}
+
+// Save returns a reader for the release zip.
+func (*releaseSaver) Save(component, version, terraformImage, releaseDir string) (io.ReadCloser, error) {
 	file, err := ioutil.TempFile("", "cdflow2-config-common-release")
 	if err != nil {
 		return nil, err
