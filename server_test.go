@@ -202,6 +202,10 @@ func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest
 	response.TerraformBackendConfig = map[string]string{
 		"backend-key": "backend-value",
 	}
+	response.TerraformBackendConfigParameters["foo"] = &common.TerrafromBackendConfigParameter{
+		Value:        "bar",
+		DisplayValue: "baz",
+	}
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
@@ -232,6 +236,12 @@ func checkPrepareTerraform(t *testing.T, errorBuffer *bytes.Buffer, socketPath s
 		},
 		"TerraformBackendConfig": map[string]string{
 			"backend-key": "backend-value",
+		},
+		"TerraformBackendConfigParameters": map[string]map[string]string{
+			"foo": {
+				"Value":        "bar",
+				"DisplayValue": "baz",
+			},
 		},
 		"TerraformBackendType": "test-backend-type",
 		"TerraformImage":       "test-terraform-image",

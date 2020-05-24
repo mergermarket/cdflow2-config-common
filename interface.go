@@ -62,13 +62,20 @@ type PrepareTerraformRequest struct {
 	Env       map[string]string
 }
 
+// TerrafromBackendConfigParameter is one backend config parameter value, with an optional display value to prevent logging secrets.
+type TerrafromBackendConfigParameter struct {
+	Value        string
+	DisplayValue string
+}
+
 // PrepareTerraformResponse is the outgoing prepare terraform response format.
 type PrepareTerraformResponse struct {
-	TerraformImage         string
-	Env                    map[string]string
-	TerraformBackendType   string
-	TerraformBackendConfig map[string]string
-	Success                bool
+	TerraformImage                   string
+	Env                              map[string]string
+	TerraformBackendType             string
+	TerraformBackendConfig           map[string]string
+	TerraformBackendConfigParameters map[string]*TerrafromBackendConfigParameter
+	Success                          bool
 }
 
 // Handler has methods to handle each bit of config.
