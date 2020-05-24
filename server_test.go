@@ -212,7 +212,7 @@ func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest
 	response.TerraformBackendConfig = map[string]string{
 		"backend-key": "backend-value",
 	}
-	response.TerraformBackendConfigParameters["foo"] = &common.TerrafromBackendConfigParameter{
+	response.TerraformBackendConfigParameters["foo"] = &common.TerraformBackendConfigParameter{
 		Value:        "bar",
 		DisplayValue: "baz",
 	}

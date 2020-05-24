@@ -60,8 +60,8 @@ type PrepareTerraformRequest struct {
 	Env       map[string]string
 }
 
-// TerrafromBackendConfigParameter is one backend config parameter value, with an optional display value to prevent logging secrets.
-type TerrafromBackendConfigParameter struct {
+// TerraformBackendConfigParameter is one backend config parameter value, with an optional display value to prevent logging secrets.
+type TerraformBackendConfigParameter struct {
 	Value        string
 	DisplayValue string
 }
@@ -72,7 +72,7 @@ type PrepareTerraformResponse struct {
 	Env                              map[string]string
 	TerraformBackendType             string
 	TerraformBackendConfig           map[string]string
-	TerraformBackendConfigParameters map[string]*TerrafromBackendConfigParameter
+	TerraformBackendConfigParameters map[string]*TerraformBackendConfigParameter
 	Success                          bool
 }
 

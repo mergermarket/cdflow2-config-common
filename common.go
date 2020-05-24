@@ -69,7 +69,7 @@ func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
 	var response PrepareTerraformResponse
 	response.Env = make(map[string]string)
 	response.TerraformBackendConfig = make(map[string]string)
-	response.TerraformBackendConfigParameters = make(map[string]*TerrafromBackendConfigParameter)
+	response.TerraformBackendConfigParameters = make(map[string]*TerraformBackendConfigParameter)
 	response.Success = true
 	return &response
 }
