@@ -1,5 +1,12 @@
 package common
 
+import (
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+)
+
 const defaultSocketPath = "/sock"
 
 // CreateSetupRequest creates and returns an initialised SetupRequest - useful for testing config containers.
@@ -65,4 +72,27 @@ func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
 	response.TerraformBackendConfigParameters = make(map[string]*TerrafromBackendConfigParameter)
 	response.Success = true
 	return &response
+}
+
+// UnpackRelease unpacks a release into a release directory.
+func UnpackRelease(reader io.Reader, component, version, releaseDir string) (string, error) {
+	terraformImage, err := UnzipRelease(reader, releaseDir, component, version)
+	if err != nil {
+		log.Fatalln("error unzipping release in PrepareTerraform:", err)
+	}
+	return terraformImage, nil
+}
+
+// GetReleaseReader returns a reader for the release zip.
+func GetReleaseReader(component, version, terraformImage, releaseDir string) (io.ReadCloser, error) {
+	file, err := ioutil.TempFile("", "cdflow2-config-common-release")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(file.Name())
+	if err := ZipRelease(file, releaseDir, component, version, terraformImage); err != nil {
+		return nil, err
+	}
+	file.Seek(0, 0)
+	return file, nil
 }

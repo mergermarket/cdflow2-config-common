@@ -131,18 +131,8 @@ func uploadRelease(handler Handler, rawRequest []byte, configureReleaseRequest *
 	if err := json.Unmarshal(rawRequest, &request); err != nil {
 		log.Fatalln("error parsing upload release request:", err)
 	}
-	file, err := ioutil.TempFile("", "cdflow2-config-common-release")
-	if err != nil {
-		log.Fatal("could not create temporary file for release:", err)
-	}
-	defer os.Remove(file.Name())
-	if err := ZipRelease(file, releaseDir, configureReleaseRequest.Component, configureReleaseRequest.Version, request.TerraformImage); err != nil {
-		log.Fatal("could not zip release:", err)
-	}
-	file.Seek(0, 0)
-
 	response := CreateUploadReleaseResponse()
-	if err := handler.UploadRelease(&request, response, configureReleaseRequest, file); err != nil {
+	if err := handler.UploadRelease(&request, response, configureReleaseRequest, releaseDir); err != nil {
 		log.Fatalln("error in UploadRelease:", err)
 	}
 	return response
@@ -154,16 +144,8 @@ func prepareTerraform(handler Handler, rawRequest []byte, releaseDir string) *Pr
 		log.Fatalln("error parsing prepare terraform request:", err)
 	}
 	response := CreatePrepareTerraformResponse()
-	reader, err := handler.PrepareTerraform(&request, response)
-	if err != nil {
+	if err := handler.PrepareTerraform(&request, response, releaseDir); err != nil {
 		log.Fatalln("error in PrepareTerraform:", err)
-	}
-	if response.Success {
-		terraformImage, err := UnzipRelease(reader, releaseDir, request.Component, request.Version)
-		if err != nil {
-			log.Fatalln("error unzipping release in PrepareTerraform:", err)
-		}
-		response.TerraformImage = terraformImage
 	}
 	return response
 }

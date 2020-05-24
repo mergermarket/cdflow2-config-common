@@ -117,7 +117,7 @@ func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest
 	return nil
 }
 
-func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, configureReleaseRequest *common.ConfigureReleaseRequest, releaseReader io.ReadSeeker) error {
+func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, response *common.UploadReleaseResponse, configureReleaseRequest *common.ConfigureReleaseRequest, releaseDir string) error {
 	fmt.Fprintf(handler.errorStream, "terraform image: %v, release metadata value: %v, config key: %v\n",
 		request.TerraformImage,
 		request.ReleaseMetadata["release"]["release-key"],
@@ -127,6 +127,16 @@ func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, resp
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
+	releaseReader, err := common.GetReleaseReader(
+		configureReleaseRequest.Component,
+		configureReleaseRequest.Version,
+		request.TerraformImage,
+		releaseDir,
+	)
+	if err != nil {
+		return err
+	}
+	defer releaseReader.Close()
 	if _, err := io.Copy(&handler.releaseData, releaseReader); err != nil {
 		return err
 	}
@@ -192,7 +202,7 @@ func checkRelease(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 	errorBuffer.Truncate(0)
 }
 
-func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse) (io.Reader, error) {
+func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest, response *common.PrepareTerraformResponse, releaseDir string) error {
 	fmt.Fprintf(handler.errorStream, "version: %v, env name: %v, config value: %v, env value: %v\n", request.Version, request.EnvName, request.Config["config-key"], request.Env["env-key"])
 	response.Env = map[string]string{
 		"response-env-key": "response-env-value",
@@ -209,8 +219,12 @@ func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
-
-	return &handler.releaseData, nil
+	terraformImage, err := common.UnpackRelease(&handler.releaseData, request.Component, request.Version, releaseDir)
+	if err != nil {
+		return err
+	}
+	response.TerraformImage = terraformImage
+	return nil
 }
 
 func checkPrepareTerraform(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
