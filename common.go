@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-const defaultSocketPath = "/sock"
+const defaultSocketPath = "/run/cdflow2-config/sock"
 
 // CreateSetupRequest creates and returns an initialised SetupRequest - useful for testing config containers.
 func CreateSetupRequest() *SetupRequest {
