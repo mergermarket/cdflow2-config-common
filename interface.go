@@ -35,8 +35,9 @@ type ConfigureReleaseRequest struct {
 
 // ConfigureReleaseResponse is the outgoing configure release response format.
 type ConfigureReleaseResponse struct {
-	Env     map[string]map[string]string
-	Success bool
+	Env                map[string]map[string]string
+	AdditionalMetadata map[string]string
+	Success            bool
 }
 
 // UploadReleaseRequest is the incoming upload release request format.

@@ -111,6 +111,7 @@ func checkSetup(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest, response *common.ConfigureReleaseResponse) error {
 	fmt.Fprintf(handler.errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
 	response.Env["build-id"] = map[string]string{"response-env-key": "response-env-value"}
+	response.AdditionalMetadata["foo"] = "bar"
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
@@ -166,6 +167,9 @@ func checkRelease(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 			"build-id": {
 				"response-env-key": "response-env-value",
 			},
+		},
+		"AdditionalMetadata": map[string]string{
+			"foo": "bar",
 		},
 		"Success": true,
 	}) {

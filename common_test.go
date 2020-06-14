@@ -39,6 +39,7 @@ func TestCreateConfigureReleaseRequest(t *testing.T) {
 func TestCreateConfigureReleaseResponse(t *testing.T) {
 	response := common.CreateConfigureReleaseResponse()
 	response.Env["test-build-id"] = map[string]string{"key": "value"}
+	response.AdditionalMetadata["foo"] = "bar"
 	if !response.Success {
 		t.Fatal("success didn't default to true")
 	}
