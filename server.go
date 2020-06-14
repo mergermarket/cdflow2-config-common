@@ -43,6 +43,13 @@ func Listen(handler Handler, socketPath, releaseDir string, sigtermChannel chan 
 		sigtermChannel = getSigtermChannel()
 	}
 
+	sockdir := filepath.Dir(socketPath)
+	if _, err := os.Stat(sockdir); os.IsNotExist(err) {
+		if err := os.MkdirAll(sockdir, os.ModePerm); err != nil {
+			log.Panicf("could not create socket dir %q: %v", sockdir, err)
+		}
+	}
+
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
 		log.Panicf("could not listen on unix domain socket %v: %v", socketPath, err)
