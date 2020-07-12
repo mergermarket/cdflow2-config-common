@@ -3,11 +3,13 @@ package common_test
 import (
 	"archive/zip"
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	common "github.com/mergermarket/cdflow2-config-common"
@@ -86,8 +88,25 @@ func TestZipRelease(t *testing.T) {
 	releaseDir := releaseDir(t)
 	var buffer bytes.Buffer
 
+	const expectedPath = ".terraform/plugins/foo/bar"
+	const expectedPluginSHA256 = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+
+	calls := 0
+
 	// When
-	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version", "test-terraform-image"); err != nil {
+	if err := common.ZipRelease(
+		&buffer, releaseDir, "test-component", "test-version", "test-terraform-image",
+		func(path, checksum string, reader io.ReadCloser) error {
+			calls++
+			if path != expectedPath {
+				t.Fatalf("expected %q, got %q", expectedPath, path)
+			}
+			if checksum != expectedPluginSHA256 {
+				t.Fatalf("expected %q, got %q", expectedPluginSHA256, checksum)
+			}
+			return nil
+		},
+	); err != nil {
 		t.Fatal("error zipping release:", err)
 	}
 
@@ -96,14 +115,20 @@ func TestZipRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal("could not create zip reader:", err)
 	}
-	if len(zipReader.File) != 2 {
-		t.Fatalf("expected %v, got %v", 2, len(zipReader.File))
+	if len(zipReader.File) != 3 {
+		t.Fatalf("expected %v, got %v", 3, len(zipReader.File))
 	}
 	if zipReader.File[0].Name != "test-component-test-version/terraform-image" {
 		t.Fatal("unexpected filename in zip:", zipReader.File[0].Name)
 	}
 	if zipReader.File[1].Name != "test-component-test-version/test.txt" {
 		t.Fatal("unexpected filename in zip:", zipReader.File[1].Name)
+	}
+	if zipReader.File[2].Name != "test-component-test-version/.cdflow2-saved-plugins-manifest" {
+		t.Fatal("unexpected filename in zip:", zipReader.File[2].Name)
+	}
+	if calls != 1 {
+		t.Fatalf("callback called %q times, expected 1", calls)
 	}
 }
 
@@ -120,13 +145,26 @@ func TestUnzipRelease(t *testing.T) {
 
 	terraformImage := "test-terraform-image"
 
-	if err := common.ZipRelease(&buffer, releaseDir, "test-component", "test-version", terraformImage); err != nil {
+	if err := common.ZipRelease(
+		&buffer, releaseDir, "test-component", "test-version", terraformImage,
+		func(path, checksum string, reader io.ReadCloser) error {
+			return nil
+		},
+	); err != nil {
 		t.Fatal("error zipping release:", err)
 	}
 	data := buffer.Bytes()
 
+	calls := 0
+
 	// When
-	gotTerraformImage, err := common.UnzipRelease(bytes.NewReader(data), dir, "test-component", "test-version")
+	gotTerraformImage, err := common.UnzipRelease(
+		bytes.NewReader(data), dir, "test-component", "test-version",
+		func(path, checksum string) (io.ReadCloser, error) {
+			calls++
+			return ioutil.NopCloser(strings.NewReader("hello world")), nil
+		},
+	)
 	if err != nil {
 		t.Fatal("unexpected error unzipping release:", err)
 	}
@@ -137,5 +175,8 @@ func TestUnzipRelease(t *testing.T) {
 	// Then
 	if data, err := ioutil.ReadFile(filepath.Join(dir, "test.txt")); err != nil || string(data) != "test" {
 		t.Fatalf("problem reading file, data: %v, error: %v\n", data, err)
+	}
+	if calls != 1 {
+		t.Fatalf("callback called %q times, expected 1", calls)
 	}
 }

@@ -89,10 +89,16 @@ type Handler interface {
 
 // ReleaseLoader helps load a release from block storage.
 type ReleaseLoader interface {
-	Load(reader io.Reader, component, version, releaseDir string) (string, error)
+	Load(
+		reader io.Reader, component, version, releaseDir string,
+		subResourceLoader func(path, checksum string) (io.ReadCloser, error),
+	) (string, error)
 }
 
 // ReleaseSaver helps save a release to block storage.
 type ReleaseSaver interface {
-	Save(component, version, terraformImage, releaseDir string) (io.ReadCloser, error)
+	Save(
+		component, version, terraformImage, releaseDir string,
+		subResourceSaver func(path, checksum string, reader io.ReadCloser) error,
+	) (io.ReadCloser, error)
 }

@@ -134,6 +134,9 @@ func (handler *handler) UploadRelease(request *common.UploadReleaseRequest, resp
 		configureReleaseRequest.Version,
 		request.TerraformImage,
 		releaseDir,
+		func(path, checksum string, reader io.ReadCloser) error {
+			return nil
+		},
 	)
 	if err != nil {
 		return err
@@ -225,7 +228,12 @@ func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest
 		handler.t.Fatal("success didn't default to true")
 	}
 	loader := common.CreateReleaseLoader()
-	terraformImage, err := loader.Load(&handler.releaseData, request.Component, request.Version, releaseDir)
+	terraformImage, err := loader.Load(
+		&handler.releaseData, request.Component, request.Version, releaseDir,
+		func(path, checksum string) (io.ReadCloser, error) {
+			return ioutil.NopCloser(strings.NewReader("hello world")), nil
+		},
+	)
 	if err != nil {
 		return err
 	}
