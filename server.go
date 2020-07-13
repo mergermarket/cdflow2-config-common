@@ -296,7 +296,7 @@ func addSavedPluginsManifest(savedPlugins []savedPlugin, dir, prefix string, zip
 		return err
 	}
 
-	fileInfo := dummyFileInfo{int64(len(serialised)), 0x644}
+	fileInfo := dummyFileInfo{int64(len(serialised)), 0644}
 	header, err := zip.FileInfoHeader(fileInfo)
 	if err != nil {
 		return err
