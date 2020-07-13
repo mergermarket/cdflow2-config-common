@@ -208,7 +208,7 @@ func ZipRelease(
 			return err
 		}
 
-		if strings.HasPrefix(relativePath, ".terraform/plugins/") {
+		if strings.HasPrefix(relativePath, ".terraform/plugins/") && !strings.HasSuffix(relativePath, "/lock.json") {
 			savedPluginsErrGroup.Go(func() error {
 				defer reader.Close()
 				checksum, err := sha256File(reader)
