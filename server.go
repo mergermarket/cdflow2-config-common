@@ -415,10 +415,12 @@ func downloadSavedPlugin(
 	if err != nil {
 		return err
 	}
+	defer reader.Close()
 	path := filepath.Join(dir, plugin.Path)
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return nil
 	}
+	fmt.Println("writing", path)
 	writer, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, plugin.Mode)
 	if err != nil {
 		return err
@@ -427,7 +429,6 @@ func downloadSavedPlugin(
 	if _, err := io.Copy(writer, reader); err != nil {
 		return err
 	}
-	reader.Close()
 	writer.Seek(0, 0)
 	checksum, err := sha256File(writer)
 	if err != nil {
@@ -436,5 +437,5 @@ func downloadSavedPlugin(
 	if plugin.Checksum != checksum {
 		return fmt.Errorf("wrong checksum for plugin %q - expected %q, got %q", plugin.Path, plugin.Checksum, checksum)
 	}
-	return writer.Close()
+	return nil
 }
