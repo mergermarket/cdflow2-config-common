@@ -436,5 +436,5 @@ func downloadSavedPlugin(
 	if plugin.Checksum != checksum {
 		return fmt.Errorf("wrong checksum for plugin %q - expected %q, got %q", plugin.Path, plugin.Checksum, checksum)
 	}
-	return nil
+	return writer.Close()
 }
