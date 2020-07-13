@@ -399,8 +399,9 @@ func downloadSavedPlugins(
 	}
 	g := new(errgroup.Group)
 	for _, plugin := range savedPlugins {
+		thisPlugin := plugin
 		g.Go(func() error {
-			return downloadSavedPlugin(dir, plugin, subResourceLoader)
+			return downloadSavedPlugin(dir, thisPlugin, subResourceLoader)
 		})
 	}
 	return g.Wait()
@@ -420,7 +421,6 @@ func downloadSavedPlugin(
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return nil
 	}
-	fmt.Println("writing", path)
 	writer, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, plugin.Mode)
 	if err != nil {
 		return err
