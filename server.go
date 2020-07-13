@@ -249,14 +249,15 @@ func ZipRelease(
 		return err
 	}
 
+	if err := savedPluginsErrGroup.Wait(); err != nil {
+		return err
+	}
+
 	if err := addSavedPluginsManifest(savedPlugins, dir, prefix, zipWriter); err != nil {
 		return err
 	}
 
-	if err := zipWriter.Close(); err != nil {
-		return err
-	}
-	return savedPluginsErrGroup.Wait()
+	return zipWriter.Close()
 }
 
 const savedPluginsManifestFilename = ".cdflow2-saved-plugins-manifest"
