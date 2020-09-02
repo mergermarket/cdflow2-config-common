@@ -250,7 +250,7 @@ func ZipRelease(
 	}
 
 	if err := savedPluginsErrGroup.Wait(); err != nil {
-		return err
+		return fmt.Errorf("cdflow2-config-common: error saving plugins: %s", err)
 	}
 
 	if err := addSavedPluginsManifest(savedPlugins, dir, prefix, zipWriter); err != nil {
