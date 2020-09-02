@@ -195,9 +195,14 @@ func ZipRelease(
 	savedPluginsErrGroup := new(errgroup.Group)
 
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+		fmt.Printf("file info: %s %+v %v\n", path, info, info.IsDir())
+		if err != nil {
 			return err
 		}
+		if info.IsDir() {
+			return nil
+		}
+
 		relativePath, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err
@@ -207,6 +212,8 @@ func ZipRelease(
 		if err != nil {
 			return fmt.Errorf("cdflow2-config-common: error opening %s for reading: %s", path, err)
 		}
+
+		//if fileInfo, err := reader.Stat(); fileI
 
 		if strings.HasPrefix(relativePath, ".terraform/plugins/") && !strings.HasSuffix(relativePath, "/lock.json") {
 			savedPluginsErrGroup.Go(func() error {
