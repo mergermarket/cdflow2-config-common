@@ -213,13 +213,13 @@ func ZipRelease(
 				defer reader.Close()
 				checksum, err := sha256File(reader)
 				if err != nil {
-					return err
+					return fmt.Errorf("cdflow2-config-common: error checksumming %s: %s", path, err)
 				}
 				if _, err := reader.Seek(0, 0); err != nil {
-					return err
+					return fmt.Errorf("cdflow2-config-common: error seeking %s: %s", path, err)
 				}
 				if err := subResourceSaver(relativePath, checksum, reader); err != nil {
-					return err
+					return fmt.Errorf("cdflow2-config-common: error from sub-resource saver for %s: %s", path, err)
 				}
 				savedPlugins = append(savedPlugins, savedPlugin{relativePath, checksum, info.Mode()})
 				return nil
