@@ -205,7 +205,7 @@ func ZipRelease(
 
 		reader, err := os.Open(path)
 		if err != nil {
-			return err
+			return fmt.Errorf("cdflow2-config-common: error opening %s for reading: %s", path, err)
 		}
 
 		if strings.HasPrefix(relativePath, ".terraform/plugins/") && !strings.HasSuffix(relativePath, "/lock.json") {
