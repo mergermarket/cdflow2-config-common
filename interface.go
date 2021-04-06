@@ -54,14 +54,14 @@ type UploadReleaseResponse struct {
 
 // PrepareTerraformRequest is the incoming prepare terraform request format.
 type PrepareTerraformRequest struct {
-	Version             string
-	Component           string
-	Team                string
-	Commit              string
-	EnvName             string
-	Config              map[string]interface{}
-	Env                 map[string]string
-	ValidateStateExists *bool
+	Version          string
+	Component        string
+	Team             string
+	Commit           string
+	EnvName          string
+	Config           map[string]interface{}
+	Env              map[string]string
+	StateShouldExist *bool
 }
 
 // TerraformBackendConfigParameter is one backend config parameter value, with an optional display value to prevent logging secrets.
