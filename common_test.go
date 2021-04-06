@@ -66,6 +66,21 @@ func TestCreatePrepareTerraformRequest(t *testing.T) {
 	if request.StateShouldExist != nil {
 		t.Fatalf("expected nil, got %v", request.StateShouldExist)
 	}
+
+	var (
+		T = true
+		F = false
+	)
+
+	request.StateShouldExist = &T
+	if *request.StateShouldExist != true {
+		t.Fatalf("expected %v, got %v", true, *request.StateShouldExist)
+	}
+
+	request.StateShouldExist = &F
+	if *request.StateShouldExist != false {
+		t.Fatalf("expected %v, got %v", false, *request.StateShouldExist)
+	}
 }
 
 func TestCreatePrepareTerraformResponse(t *testing.T) {
