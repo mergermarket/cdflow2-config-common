@@ -63,8 +63,8 @@ func TestCreatePrepareTerraformRequest(t *testing.T) {
 	request := common.CreatePrepareTerraformRequest()
 	request.Config["key"] = "value"
 	request.Env["key"] = "value"
-	if request.ValidateStateExists != nil {
-		t.Fatalf("expected nil, got %v", request.ValidateStateExists)
+	if request.StateShouldExist != nil {
+		t.Fatalf("expected nil, got %v", request.StateShouldExist)
 	}
 }
 
