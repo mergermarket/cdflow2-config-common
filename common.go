@@ -85,9 +85,8 @@ func CreateReleaseLoader() ReleaseLoader {
 // Load unpacks a release into a release directory.
 func (*releaseLoader) Load(
 	reader io.Reader, component, version, releaseDir string,
-	subResourceLoader func(path, checksum string) (io.ReadCloser, error),
 ) (string, error) {
-	terraformImage, err := UnzipRelease(reader, releaseDir, component, version, subResourceLoader)
+	terraformImage, err := UnzipRelease(reader, releaseDir, component, version)
 	if err != nil {
 		return "", fmt.Errorf("error unzipping release in PrepareTerraform: %s", err)
 	}
@@ -104,7 +103,6 @@ func CreateReleaseSaver() ReleaseSaver {
 // Save returns a reader for the release zip.
 func (*releaseSaver) Save(
 	component, version, terraformImage, releaseDir string,
-	subResourceSaver func(path, checksum string, reader io.ReadCloser) error,
 ) (io.ReadCloser, error) {
 	file, err := ioutil.TempFile("", "cdflow2-config-common-release")
 	if err != nil {
@@ -113,7 +111,6 @@ func (*releaseSaver) Save(
 	defer os.Remove(file.Name())
 	if err := ZipRelease(
 		file, releaseDir, component, version, terraformImage,
-		subResourceSaver,
 	); err != nil {
 		return nil, err
 	}

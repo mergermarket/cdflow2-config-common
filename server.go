@@ -16,8 +16,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 )
 
 type message struct {
@@ -178,7 +176,6 @@ type savedPlugin struct {
 // ZipRelease zips the release folder to a stream.
 func ZipRelease(
 	writer io.Writer, dir, component, version, terraformImage string,
-	subResourceSaver func(path, checksum string, reader io.ReadCloser) error,
 ) error {
 	if component == "" {
 		panic("no component")
@@ -191,8 +188,6 @@ func ZipRelease(
 		return err
 	}
 	writer.Write([]byte(terraformImage))
-	savedPlugins := []savedPlugin{}
-	savedPluginsErrGroup := new(errgroup.Group)
 
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -213,24 +208,6 @@ func ZipRelease(
 			return err
 		}
 
-		if strings.HasPrefix(relativePath, ".terraform/plugins/") && !strings.HasSuffix(relativePath, "/lock.json") {
-			savedPluginsErrGroup.Go(func() error {
-				defer reader.Close()
-				checksum, err := sha256File(reader)
-				if err != nil {
-					return fmt.Errorf("cdflow2-config-common: error checksumming %s: %s", path, err)
-				}
-				if _, err := reader.Seek(0, 0); err != nil {
-					return fmt.Errorf("cdflow2-config-common: error seeking %s: %s", path, err)
-				}
-				if err := subResourceSaver(relativePath, checksum, reader); err != nil {
-					return fmt.Errorf("cdflow2-config-common: error from sub-resource saver for %s: %s", path, err)
-				}
-				savedPlugins = append(savedPlugins, savedPlugin{relativePath, checksum, info.Mode()})
-				return nil
-			})
-			return nil
-		}
 		defer reader.Close()
 
 		header, err := zip.FileInfoHeader(info)
@@ -254,18 +231,8 @@ func ZipRelease(
 		return err
 	}
 
-	if err := savedPluginsErrGroup.Wait(); err != nil {
-		return fmt.Errorf("cdflow2-config-common: error saving plugins: %s", err)
-	}
-
-	if err := addSavedPluginsManifest(savedPlugins, dir, prefix, zipWriter); err != nil {
-		return err
-	}
-
 	return zipWriter.Close()
 }
-
-const savedPluginsManifestFilename = ".cdflow2-saved-plugins-manifest"
 
 type dummyFileInfo struct {
 	size int64
@@ -296,36 +263,9 @@ func (dummyFileInfo) Sys() interface{} {
 	return nil
 }
 
-func addSavedPluginsManifest(savedPlugins []savedPlugin, dir, prefix string, zipWriter *zip.Writer) error {
-	serialised, err := json.Marshal(savedPlugins)
-	if err != nil {
-		return err
-	}
-
-	fileInfo := dummyFileInfo{int64(len(serialised)), 0644}
-	header, err := zip.FileInfoHeader(fileInfo)
-	if err != nil {
-		return err
-	}
-	manifestPath := filepath.Join(prefix, savedPluginsManifestFilename)
-	header.Name = manifestPath
-
-	writer, err := zipWriter.CreateHeader(header)
-	if err != nil {
-		return err
-	}
-
-	if _, err := writer.Write(serialised); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // UnzipRelease unzips the release.
 func UnzipRelease(
 	reader io.Reader, dir, component, version string,
-	subResourceLoader func(path, checksum string) (io.ReadCloser, error),
 ) (string, error) {
 	contents, err := ioutil.ReadAll(reader)
 	if err != nil {
@@ -339,7 +279,6 @@ func UnzipRelease(
 	prefix := component + "-" + version
 
 	var terraformImageBuffer bytes.Buffer
-	var savedPluginsBuffer bytes.Buffer
 	for _, file := range zipReader.File {
 		if file.FileInfo().IsDir() {
 			continue
@@ -364,11 +303,6 @@ func UnzipRelease(
 			continue
 		}
 
-		if len(parts) == 2 && parts[1] == savedPluginsManifestFilename {
-			io.Copy(&savedPluginsBuffer, reader)
-			continue
-		}
-
 		destFilename := filepath.Join(dir, filepath.Join(parts[1:]...))
 		if err = os.MkdirAll(filepath.Dir(destFilename), os.FileMode(0755)); err != nil {
 			return "", err
@@ -385,62 +319,5 @@ func UnzipRelease(
 	if terraformImageBuffer.String() == "" {
 		panic("did not find terraform-image in zip")
 	}
-	savedPlugins := savedPluginsBuffer.Bytes()
-	if len(savedPlugins) > 0 {
-		if err := downloadSavedPlugins(dir, savedPlugins, subResourceLoader); err != nil {
-			return "", err
-		}
-	}
 	return string(terraformImageBuffer.String()), nil
-}
-
-func downloadSavedPlugins(
-	dir string, data []byte,
-	subResourceLoader func(path, checksum string) (io.ReadCloser, error),
-) error {
-	var savedPlugins []savedPlugin
-	if err := json.Unmarshal(data, &savedPlugins); err != nil {
-		return err
-	}
-	g := new(errgroup.Group)
-	for _, plugin := range savedPlugins {
-		thisPlugin := plugin
-		g.Go(func() error {
-			return downloadSavedPlugin(dir, thisPlugin, subResourceLoader)
-		})
-	}
-	return g.Wait()
-}
-
-func downloadSavedPlugin(
-	dir string, plugin savedPlugin,
-	subResourceLoader func(path, checksum string) (io.ReadCloser, error),
-) error {
-	// TODO check plugin cache to avoid downloading at all
-	reader, err := subResourceLoader(plugin.Path, plugin.Checksum)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-	path := filepath.Join(dir, plugin.Path)
-	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-		return nil
-	}
-	writer, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, plugin.Mode)
-	if err != nil {
-		return err
-	}
-	defer writer.Close()
-	if _, err := io.Copy(writer, reader); err != nil {
-		return err
-	}
-	writer.Seek(0, 0)
-	checksum, err := sha256File(writer)
-	if err != nil {
-		return err
-	}
-	if plugin.Checksum != checksum {
-		return fmt.Errorf("wrong checksum for plugin %q - expected %q, got %q", plugin.Path, plugin.Checksum, checksum)
-	}
-	return nil
 }

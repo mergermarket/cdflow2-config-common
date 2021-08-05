@@ -92,7 +92,6 @@ type Handler interface {
 type ReleaseLoader interface {
 	Load(
 		reader io.Reader, component, version, releaseDir string,
-		subResourceLoader func(path, checksum string) (io.ReadCloser, error),
 	) (string, error)
 }
 
@@ -100,6 +99,5 @@ type ReleaseLoader interface {
 type ReleaseSaver interface {
 	Save(
 		component, version, terraformImage, releaseDir string,
-		subResourceSaver func(path, checksum string, reader io.ReadCloser) error,
 	) (io.ReadCloser, error)
 }
