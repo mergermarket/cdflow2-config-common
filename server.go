@@ -304,16 +304,18 @@ func UnzipRelease(
 		}
 
 		destFilename := filepath.Join(dir, filepath.Join(parts[1:]...))
-		if err = os.MkdirAll(filepath.Dir(destFilename), os.FileMode(0755)); err != nil {
-			return "", err
-		}
-		writer, err := os.OpenFile(destFilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			return "", err
-		}
-		defer writer.Close()
-		if _, err := io.Copy(writer, reader); err != nil {
-			return "", err
+		if !strings.Contains(destFilename, "..") {
+			if err = os.MkdirAll(filepath.Dir(destFilename), os.FileMode(0755)); err != nil {
+				return "", err
+			}
+			writer, err := os.OpenFile(destFilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+			if err != nil {
+				return "", err
+			}
+			defer writer.Close()
+			if _, err := io.Copy(writer, reader); err != nil {
+				return "", err
+			}
 		}
 	}
 	if terraformImageBuffer.String() == "" {
