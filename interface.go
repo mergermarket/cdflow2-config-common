@@ -24,7 +24,8 @@ type SetupRequest struct {
 
 // SetupResponse is the outgoing setup response format.
 type SetupResponse struct {
-	Success bool
+	MonitoringData map[string]string
+	Success        bool
 }
 
 // ConfigureReleaseRequest is the incoming configure release request format.
@@ -37,6 +38,7 @@ type ConfigureReleaseRequest struct {
 type ConfigureReleaseResponse struct {
 	Env                map[string]map[string]string
 	AdditionalMetadata map[string]string
+	MonitoringData     map[string]string
 	Success            bool
 }
 
@@ -77,6 +79,7 @@ type PrepareTerraformResponse struct {
 	TerraformBackendType             string
 	TerraformBackendConfig           map[string]string
 	TerraformBackendConfigParameters map[string]*TerraformBackendConfigParameter
+	MonitoringData                   map[string]string
 	Success                          bool
 }
 

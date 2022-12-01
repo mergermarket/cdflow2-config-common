@@ -22,6 +22,7 @@ func CreateSetupRequest() *SetupRequest {
 func CreateSetupResponse() *SetupResponse {
 	var response SetupResponse
 	response.Success = true
+	response.MonitoringData = make(map[string]string)
 	return &response
 }
 
@@ -39,6 +40,7 @@ func CreateConfigureReleaseResponse() *ConfigureReleaseResponse {
 	var response ConfigureReleaseResponse
 	response.Env = make(map[string]map[string]string)
 	response.AdditionalMetadata = make(map[string]string)
+	response.MonitoringData = make(map[string]string)
 	response.Success = true
 	return &response
 }
@@ -71,6 +73,7 @@ func CreatePrepareTerraformResponse() *PrepareTerraformResponse {
 	response.Env = make(map[string]string)
 	response.TerraformBackendConfig = make(map[string]string)
 	response.TerraformBackendConfigParameters = make(map[string]*TerraformBackendConfigParameter)
+	response.MonitoringData = make(map[string]string)
 	response.Success = true
 	return &response
 }
