@@ -79,6 +79,9 @@ func (handler *handler) Setup(request *common.SetupRequest, response *common.Set
 		request.Config["config-key"],
 		strings.Join(request.ReleaseRequirements["release"].Needs, ", "),
 	)
+
+	response.MonitoringData["team"] = "test"
+
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
@@ -99,9 +102,14 @@ func checkSetup(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 	if err != nil {
 		t.Fatal("error calling setup:", err)
 	}
-	if success, ok := setupResponse["Success"].(bool); !ok || !success {
-		t.Fatal("success false from setup")
+
+	if fmt.Sprintf("%v", setupResponse) != fmt.Sprintf("%v", map[string]interface{}{
+		"MonitoringData": map[string]string{"team": "test"},
+		"Success":        true,
+	}) {
+		t.Fatal("unexpected setup response:", setupResponse)
 	}
+
 	if errorBuffer.String() != "env key: env-value, config key: config-value, release needs: a, b\n" {
 		t.Fatal("unexpected setup debug output:", errorBuffer.String())
 	}
@@ -112,6 +120,8 @@ func (handler *handler) ConfigureRelease(request *common.ConfigureReleaseRequest
 	fmt.Fprintf(handler.errorStream, "version: %v, env key: %v, config key: %v\n", request.Version, request.Env["env-key"], request.Config["config-key"])
 	response.Env["build-id"] = map[string]string{"response-env-key": "response-env-value"}
 	response.AdditionalMetadata["foo"] = "bar"
+	response.MonitoringData["team"] = "test"
+
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
@@ -171,7 +181,8 @@ func checkRelease(t *testing.T, errorBuffer *bytes.Buffer, socketPath string) {
 		"AdditionalMetadata": map[string]string{
 			"foo": "bar",
 		},
-		"Success": true,
+		"MonitoringData": map[string]string{"team": "test"},
+		"Success":        true,
 	}) {
 		t.Fatal("unexpected configure release response:", configureReleaseResponse)
 	}
@@ -221,6 +232,8 @@ func (handler *handler) PrepareTerraform(request *common.PrepareTerraformRequest
 		Value:        "bar",
 		DisplayValue: "baz",
 	}
+	response.MonitoringData["team"] = "test"
+
 	if !response.Success {
 		handler.t.Fatal("success didn't default to true")
 	}
@@ -267,6 +280,7 @@ func checkPrepareTerraform(t *testing.T, errorBuffer *bytes.Buffer, socketPath s
 		},
 		"TerraformBackendType": "test-backend-type",
 		"TerraformImage":       "test-terraform-image",
+		"MonitoringData":       map[string]string{"team": "test"},
 		"Success":              true,
 	}) {
 		t.Fatal("unexpected prepare terraform response:", prepareTerraformResponse)
