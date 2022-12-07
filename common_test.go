@@ -24,8 +24,8 @@ func TestCreateSetupRequest(t *testing.T) {
 func TestCreateSetupResponse(t *testing.T) {
 	response := common.CreateSetupResponse()
 
-	if response.MonitoringData == nil {
-		t.Fatal("MonitoringData does not initialized")
+	if response.Monitoring == nil || response.Monitoring.Data == nil {
+		t.Fatal("Monitoring data does not initialized")
 	}
 
 	if !response.Success {
@@ -46,8 +46,8 @@ func TestCreateConfigureReleaseResponse(t *testing.T) {
 	response.Env["test-build-id"] = map[string]string{"key": "value"}
 	response.AdditionalMetadata["foo"] = "bar"
 
-	if response.MonitoringData == nil {
-		t.Fatal("MonitoringData does not initialized")
+	if response.Monitoring == nil || response.Monitoring.Data == nil {
+		t.Fatal("Monitoring data does not initialized")
 	}
 
 	if !response.Success {
@@ -96,8 +96,8 @@ func TestCreatePrepareTerraformResponse(t *testing.T) {
 	response.Env["key"] = "value"
 	response.TerraformBackendConfig["key"] = "value"
 
-	if response.MonitoringData == nil {
-		t.Fatal("MonitoringData does not initialized")
+	if response.Monitoring == nil || response.Monitoring.Data == nil {
+		t.Fatal("Monitoring data does not initialized")
 	}
 
 	if !response.Success {
