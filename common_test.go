@@ -23,6 +23,11 @@ func TestCreateSetupRequest(t *testing.T) {
 
 func TestCreateSetupResponse(t *testing.T) {
 	response := common.CreateSetupResponse()
+
+	if response.Monitoring == nil || response.Monitoring.Data == nil {
+		t.Fatal("Monitoring data does not initialized")
+	}
+
 	if !response.Success {
 		t.Fatal("success didn't default to true")
 	}
@@ -40,6 +45,11 @@ func TestCreateConfigureReleaseResponse(t *testing.T) {
 	response := common.CreateConfigureReleaseResponse()
 	response.Env["test-build-id"] = map[string]string{"key": "value"}
 	response.AdditionalMetadata["foo"] = "bar"
+
+	if response.Monitoring == nil || response.Monitoring.Data == nil {
+		t.Fatal("Monitoring data does not initialized")
+	}
+
 	if !response.Success {
 		t.Fatal("success didn't default to true")
 	}
@@ -85,6 +95,11 @@ func TestCreatePrepareTerraformResponse(t *testing.T) {
 	response := common.CreatePrepareTerraformResponse()
 	response.Env["key"] = "value"
 	response.TerraformBackendConfig["key"] = "value"
+
+	if response.Monitoring == nil || response.Monitoring.Data == nil {
+		t.Fatal("Monitoring data does not initialized")
+	}
+
 	if !response.Success {
 		t.Fatal("success didn't default to true")
 	}

@@ -2,6 +2,11 @@ package common
 
 import "io"
 
+type Monitoring struct {
+	APIKey string
+	Data   map[string]string
+}
+
 // ReleaseRequirements contains a list of needs of a build container.
 type ReleaseRequirements struct {
 	Needs []string
@@ -24,7 +29,8 @@ type SetupRequest struct {
 
 // SetupResponse is the outgoing setup response format.
 type SetupResponse struct {
-	Success bool
+	Monitoring *Monitoring
+	Success    bool
 }
 
 // ConfigureReleaseRequest is the incoming configure release request format.
@@ -37,6 +43,7 @@ type ConfigureReleaseRequest struct {
 type ConfigureReleaseResponse struct {
 	Env                map[string]map[string]string
 	AdditionalMetadata map[string]string
+	Monitoring         *Monitoring
 	Success            bool
 }
 
@@ -77,6 +84,7 @@ type PrepareTerraformResponse struct {
 	TerraformBackendType             string
 	TerraformBackendConfig           map[string]string
 	TerraformBackendConfigParameters map[string]*TerraformBackendConfigParameter
+	Monitoring                       *Monitoring
 	Success                          bool
 }
 
