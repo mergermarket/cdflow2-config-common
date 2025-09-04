@@ -69,6 +69,7 @@ type PrepareTerraformRequest struct {
 	Config           map[string]interface{}
 	Env              map[string]string
 	StateShouldExist *bool
+	TerraformVersion string
 }
 
 // TerraformBackendConfigParameter is one backend config parameter value, with an optional display value to prevent logging secrets.
